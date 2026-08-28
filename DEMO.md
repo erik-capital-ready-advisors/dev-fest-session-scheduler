@@ -1,0 +1,56 @@
+# Backtime — demo runbook
+
+**Open:** double-click `index.html`. No server, no build, no network. If a browser blocks local
+files, `python3 -m http.server 8731` and open `http://127.0.0.1:8731/index.html` — but you should
+not need it.
+
+## Before you present (30 seconds, do it every time)
+
+Open the browser console and run:
+
+```js
+Backtime.reset()            // clears localStorage, back to a clean rundown
+Backtime.setClock('09:15')  // put the clock at the top of the show
+```
+
+**Why this matters:** the arithmetic is honest. If it is 2pm and you start the rundown from A1, you
+really are ~5 hours heavy, and the readout will say so. `setClock` puts you at the top of the show
+so the numbers read the way the story needs. On the actual day, during the actual show, do not use
+it — the real wall clock is the point.
+
+## The 90 seconds
+
+1. *"Anyone who has run a schedule against a hard stop has had this moment."*
+   Screen is showing today's real DevFest DC rundown — keynote plus Track 1, scraped from
+   devfestdc.org this morning. Back-timed from the 5pm happy hour, which does not move.
+2. Hit **START**. Readout reads `0:00 ONTIME`.
+3. *"Nathen's keynote is planned for 45 minutes. It runs 49."*
+   Hit **NEXT**.
+4. Readout **snaps to `+4:00 HEAVY`**. Beneath it, in the same beat:
+   > **Drop "Turnaround" → you land at −1:00**
+5. *"That's back-timing and floats. It's how a control room has run a live show for fifty years —
+   it has just never been in the hands of anyone running a meeting."*
+
+**Do not overrun by more than about 5 minutes in rehearsal.** The floats are 5 / 55 / 5 / 55 min.
+Past ~5 min of overage the solver correctly reaches for the 55-minute Lunch and the landing figure
+gets ugly (`−35:00`). Four minutes is the clean beat.
+
+## If something goes wrong on stage
+
+- Mis-tapped **NEXT** → hit **BACK**. It restores the prior state exactly. Verified.
+- Numbers look wrong → `Backtime.reset()` then `Backtime.setClock('09:15')`.
+- Want to jump elsewhere in the day → `Backtime.setClock('13:30')`.
+
+## What to say if asked "is this live data?"
+
+Yes, and deliberately frozen. `scripts/scrape_devfest.py` pulled the real schedule this morning;
+`data/rundown.json` is the frozen result. The app never touches the network — that is a design
+decision, not a limitation. A timing tool that needs wifi is a timing tool that fails in the room
+where you need it.
+
+## What is derived, not published (be honest if asked)
+
+- devfestdc.org publishes **start times only**. Durations are derived from the gap to the next
+  start, capped at 50 min, with the remainder emitted as an explicit float (turnaround / lunch /
+  buffer). Every duration is editable.
+- The 17:00 hard end comes from the homepage happy-hour slot, not the sessions page.

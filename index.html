@@ -1,0 +1,443 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Backtime — Live</title>
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ------------------------------------------------------------ header -->
+  <header class="topbar">
+    <span class="brand">BACKTIME</span>
+    <span class="status-pill" id="status-pill" data-status="idle">IDLE</span>
+    <span class="topbar-spacer"></span>
+    <span class="hard-end">HARD END<b>17:00</b></span>
+  </header>
+
+  <!-- ------------------------------------------------------------- stage -->
+  <section class="stage">
+    <div class="stage-top">
+
+      <!-- the number a producer reads from across the room -->
+      <div class="readout-block">
+        <div class="readout-label-row"><span class="eyebrow">HEAVY / LIGHT</span></div>
+        <div class="readout" id="readout" data-state="ONTIME">
+          <span class="readout-value" id="readout-value">0:00</span>
+          <span class="readout-state" id="readout-state">ON TIME</span>
+        </div>
+      </div>
+
+      <!-- two clocks; negative means over, and they never stop at zero -->
+      <div class="clocks">
+        <div class="clock" id="clock-conference">
+          <div class="clock-head">
+            <span class="clock-name">CONFERENCE</span>
+            <span class="clock-flag" id="clock-conference-flag" hidden>OVER</span>
+          </div>
+          <div class="clock-value" id="clock-conference-value">0:00:00</div>
+        </div>
+        <div class="clock" id="clock-segment">
+          <div class="clock-head">
+            <span class="clock-name">SEGMENT</span>
+            <span class="clock-flag" id="clock-segment-flag" hidden>OVER</span>
+          </div>
+          <div class="clock-value" id="clock-segment-value">0:00</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- only rendered when vm.recommendation is non-null -->
+    <div class="recommendation" id="recommendation" hidden>
+      <span class="recommendation-tag" id="recommendation-tag">CUT</span>
+      <span class="recommendation-text" id="recommendation-text"></span>
+    </div>
+
+    <!-- transport: NEXT is the only control touched while running -->
+    <div class="transport">
+      <button class="btn btn-go"      id="btn-start" type="button">START</button>
+      <button class="btn btn-primary" id="btn-next"  type="button">NEXT</button>
+      <button class="btn"             id="btn-back"  type="button">BACK</button>
+      <button class="btn"             id="btn-pause" type="button">PAUSE</button>
+      <button class="btn btn-danger"  id="btn-stop"  type="button">STOP</button>
+    </div>
+  </section>
+
+  <!-- ----------------------------------------------------------- rundown -->
+  <section class="rundown">
+    <table>
+      <colgroup>
+        <col class="col-page"><col class="col-slug"><col class="col-speaker">
+        <col class="col-dur"><col class="col-time"><col class="col-time">
+        <col class="col-backtime"><col class="col-float">
+      </colgroup>
+      <thead>
+        <tr>
+          <th class="col-page">PAGE</th>
+          <th class="col-slug">SLUG</th>
+          <th class="col-speaker">SPEAKER</th>
+          <th class="col-dur">DUR</th>
+          <th class="col-time">START</th>
+          <th class="col-time">END</th>
+          <th class="col-backtime">BACKTIME</th>
+          <th class="col-float">FLOAT</th>
+        </tr>
+      </thead>
+      <tbody id="rundown-body"></tbody>
+    </table>
+  </section>
+
+</div>
+
+<!-- ---------------------------------------------------------- slug editor -->
+<div class="editor-backdrop" id="editor-backdrop" hidden>
+  <div class="editor" role="dialog" aria-modal="true" aria-labelledby="editor-title">
+    <div class="editor-head">
+      <div class="editor-page" id="editor-page">A1</div>
+      <h2 class="editor-title" id="editor-title"></h2>
+    </div>
+    <div class="editor-body">
+      <div class="field-label">DESCRIPTION</div>
+      <textarea id="editor-text" spellcheck="false"></textarea>
+      <div class="field-label" style="margin-top:20px">SPEAKER BIO &mdash; READ ONLY</div>
+      <div class="editor-bio" id="editor-bio"></div>
+    </div>
+    <div class="editor-foot">
+      <span class="shortcut-hint"><kbd>Esc</kbd> close &nbsp;&middot;&nbsp; <kbd>&#8984;</kbd><kbd>&#9166;</kbd> save</span>
+      <span class="editor-foot-spacer"></span>
+      <button class="btn" id="btn-editor-cancel" type="button">CANCEL</button>
+      <button class="btn btn-go" id="btn-editor-save" type="button">SAVE</button>
+    </div>
+  </div>
+</div>
+
+<script src="bundle.js"></script>
+<script>
+/* ==========================================================================
+   Backtime — presentation layer.
+
+   THE RULE FOR THIS FILE: it contains zero timing logic. No Date math, no
+   duration arithmetic, no back-timing, no delta, no float solving, no
+   interval driving real time. Every string below arrives pre-formatted in
+   the view model. If you find yourself computing a time here, it belongs
+   in lib/timing.js instead.
+   ========================================================================== */
+
+/* ------------------------------------------------------------ view model --
+   render(vm) takes exactly this shape:
+
+   {
+     status: 'idle' | 'running' | 'paused' | 'stopped',
+     readout: { text: string, label: string, state: 'HEAVY'|'LIGHT'|'ONTIME' },
+     conferenceClock: { text: string, negative: boolean },
+     segmentClock:    { text: string, negative: boolean },
+     recommendation: null | { sentence: string, covers: boolean },
+     rows: Array<{
+       page: string, slug: string, speaker: string,
+       duration: string, start: string, end: string, backtime: string,
+       isFloat: boolean, done: boolean, current: boolean,
+       variance: string|null,                 // null unless done
+       varianceState: 'over'|'under'|null
+     }>,
+     editor: null | { page, slug, description, speakerBio }
+   }
+   -------------------------------------------------------------------------- */
+
+const DEMO_VM = {
+  status: 'running',
+  readout: { text: '+4:00', label: 'HEAVY', state: 'HEAVY' },
+  conferenceClock: { text: '2:34:40', negative: false },
+  segmentClock:    { text: '-1:20',   negative: true  },
+  recommendation: {
+    sentence: 'Drop "Turnaround" → you land at −1:00',
+    covers: true
+  },
+  rows: [
+    { page:'A1', slug:'Building in the AI-first world: Scale brilliance, not bottlenecks',
+      speaker:'Nathen Harvey', duration:'45:00', start:'09:15', end:'10:00',
+      backtime:'09:15', isFloat:false, done:true, current:false,
+      variance:'+1:40', varianceState:'over' },
+    { page:'B1', slug:'Two Tablets, One Bench: Real-Time Multiplayer at the Edge with Durable Objects and Workers AI',
+      speaker:'Amanda J Kendal-Brown', duration:'50:00', start:'10:00', end:'10:50',
+      backtime:'10:00', isFloat:false, done:true, current:false,
+      variance:'−0:35', varianceState:'under' },
+    { page:'B2', slug:'Challenges, considerations, and capabilities in building agentic systems',
+      speaker:'Rezaur Rahman, John Lee', duration:'50:00', start:'10:50', end:'11:40',
+      backtime:'10:50', isFloat:false, done:true, current:false,
+      variance:'+2:10', varianceState:'over' },
+    { page:'B3', slug:'Turnaround',
+      speaker:'—', duration:'05:00', start:'11:40', end:'11:45',
+      backtime:'11:40', isFloat:true, done:true, current:false,
+      variance:'+0:25', varianceState:'over' },
+    { page:'B4', slug:'Building in the AI Era: What Developers Need to Know About Agents',
+      speaker:'Naveen Nigam, Chris Grimm, Andrew Chen', duration:'50:00', start:'11:45', end:'12:35',
+      backtime:'11:45', isFloat:false, done:true, current:false,
+      variance:'+1:20', varianceState:'over' },
+    { page:'B5', slug:'Lunch',
+      speaker:'—', duration:'55:00', start:'12:35', end:'13:30',
+      backtime:'12:35', isFloat:true, done:true, current:false,
+      variance:'−1:00', varianceState:'under' },
+    { page:'C1', slug:'AppFunctions: Making Your Android App Agent-Ready',
+      speaker:'Chrystian Vieyra Cortes', duration:'50:00', start:'13:30', end:'14:20',
+      backtime:'13:30', isFloat:false, done:false, current:true,
+      variance:null, varianceState:null },
+    { page:'C2', slug:'Where the Agent Stops: Boundaries, Orchestration, and Legacy Systems',
+      speaker:'William Lopez, Chris Tonjes, Grace Kim', duration:'50:00', start:'14:20', end:'15:10',
+      backtime:'14:20', isFloat:false, done:false, current:false,
+      variance:null, varianceState:null },
+    { page:'C3', slug:'Turnaround',
+      speaker:'—', duration:'05:00', start:'15:10', end:'15:15',
+      backtime:'15:10', isFloat:true, done:false, current:false,
+      variance:null, varianceState:null },
+    { page:'C4', slug:'The Invisible City: Building Real-Time Spatial Agents',
+      speaker:'Noble Ackerson', duration:'50:00', start:'15:15', end:'16:05',
+      backtime:'15:15', isFloat:false, done:false, current:false,
+      variance:null, varianceState:null },
+    { page:'C5', slug:'Buffer to Happy Hour',
+      speaker:'—', duration:'55:00', start:'16:05', end:'17:00',
+      backtime:'16:05', isFloat:true, done:false, current:false,
+      variance:null, varianceState:null }
+  ],
+  editor: null
+};
+
+/* ------------------------------------------------------------------- dom -- */
+
+const $ = (id) => document.getElementById(id);
+
+const el = {
+  statusPill: $('status-pill'),
+  readout: $('readout'),
+  readoutValue: $('readout-value'),
+  readoutState: $('readout-state'),
+  confClock: $('clock-conference'),
+  confValue: $('clock-conference-value'),
+  confFlag: $('clock-conference-flag'),
+  segClock: $('clock-segment'),
+  segValue: $('clock-segment-value'),
+  segFlag: $('clock-segment-flag'),
+  rec: $('recommendation'),
+  recTag: $('recommendation-tag'),
+  recText: $('recommendation-text'),
+  body: $('rundown-body'),
+  backdrop: $('editor-backdrop'),
+  editorPage: $('editor-page'),
+  editorTitle: $('editor-title'),
+  editorText: $('editor-text'),
+  editorBio: $('editor-bio'),
+  btnStart: $('btn-start'),
+  btnNext: $('btn-next'),
+  btnBack: $('btn-back'),
+  btnPause: $('btn-pause'),
+  btnStop: $('btn-stop')
+};
+
+/* Transport availability per status. Presentation only — the engine decides
+   what each button actually does. hidden/disabled/label, nothing else. */
+const TRANSPORT = {
+  idle:    { start:{show:true,  on:true },  next:{on:false}, back:{on:false}, stop:{on:false}, pause:{on:false, label:'PAUSE',  armed:false} },
+  running: { start:{show:false, on:false},  next:{on:true },  back:{on:true }, stop:{on:true }, pause:{on:true,  label:'PAUSE',  armed:false} },
+  paused:  { start:{show:false, on:false},  next:{on:false}, back:{on:true }, stop:{on:true }, pause:{on:true,  label:'RESUME', armed:true } },
+  stopped: { start:{show:true,  on:true },  next:{on:false}, back:{on:true }, stop:{on:false}, pause:{on:false, label:'PAUSE',  armed:false} }
+};
+
+/* ---------------------------------------------------------------- render -- */
+
+let currentVm = null;
+
+/**
+ * Paint the whole screen from a fully-computed view model.
+ * Full repaint, idempotent, no state of its own beyond `currentVm`.
+ * @param {object} vm — see the view-model comment above.
+ */
+function render(vm) {
+  currentVm = vm;
+
+  // status ------------------------------------------------------------------
+  el.statusPill.dataset.status = vm.status;
+  el.statusPill.textContent = vm.status === 'running' ? 'ON AIR' : vm.status.toUpperCase();
+
+  // readout -----------------------------------------------------------------
+  el.readout.dataset.state = vm.readout.state;
+  el.readoutValue.textContent = vm.readout.text;
+  el.readoutState.textContent = vm.readout.label;
+
+  // clocks ------------------------------------------------------------------
+  paintClock(el.confClock, el.confValue, el.confFlag, vm.conferenceClock);
+  paintClock(el.segClock,  el.segValue,  el.segFlag,  vm.segmentClock);
+
+  // recommendation ----------------------------------------------------------
+  if (vm.recommendation) {
+    el.rec.hidden = false;
+    el.rec.classList.toggle('is-warning', vm.recommendation.covers === false);
+    el.recTag.textContent = vm.recommendation.covers ? 'CUT' : 'NO CUT COVERS';
+    el.recText.textContent = vm.recommendation.sentence;
+  } else {
+    el.rec.hidden = true;
+  }
+
+  // transport ---------------------------------------------------------------
+  const t = TRANSPORT[vm.status] || TRANSPORT.idle;
+  el.btnStart.hidden   = !t.start.show;
+  el.btnStart.disabled = !t.start.on;
+  el.btnNext.disabled  = !t.next.on;
+  el.btnBack.disabled  = !t.back.on;
+  el.btnStop.disabled  = !t.stop.on;
+  el.btnPause.disabled = !t.pause.on;
+  el.btnPause.textContent = t.pause.label;
+  el.btnPause.classList.toggle('is-armed', t.pause.armed);
+
+  // rundown -----------------------------------------------------------------
+  const frag = document.createDocumentFragment();
+  for (const row of vm.rows) frag.appendChild(buildRow(row));
+  el.body.replaceChildren(frag);
+
+  // editor ------------------------------------------------------------------
+  paintEditor(vm.editor);
+}
+
+function paintClock(box, value, flag, clock) {
+  box.classList.toggle('is-negative', !!clock.negative);
+  flag.hidden = !clock.negative;
+  value.textContent = clock.text;
+}
+
+function buildRow(row) {
+  const tr = document.createElement('tr');
+  tr.classList.toggle('is-done', !!row.done);
+  tr.classList.toggle('is-float', !!row.isFloat);
+  tr.classList.toggle('is-current', !!row.current);
+
+  tr.appendChild(cell('cell-page mono', row.page));
+
+  // SLUG — the only double-clickable cell in the rundown.
+  const slug = document.createElement('td');
+  slug.className = 'cell-slug';
+  const slugSpan = document.createElement('span');
+  slugSpan.className = 'slug-target';
+  slugSpan.textContent = row.slug;
+  slug.appendChild(slugSpan);
+  slug.title = row.slug + '  —  double-click to edit';
+  slug.ondblclick = () => openEditor(row.page);
+  tr.appendChild(slug);
+
+  tr.appendChild(cell('cell-speaker', row.speaker));
+
+  // DUR carries the completed row's variance so the column list stays exact.
+  const dur = document.createElement('td');
+  dur.className = 'cell-dur mono';
+  const durText = document.createElement('span');
+  durText.textContent = row.duration;
+  dur.appendChild(durText);
+  if (row.variance) {
+    const v = document.createElement('span');
+    v.className = 'chip-var ' + (row.varianceState === 'under' ? 'is-under' : 'is-over');
+    v.textContent = row.variance;
+    dur.appendChild(v);
+  }
+  tr.appendChild(dur);
+
+  tr.appendChild(cell('cell-num mono', row.start));
+  tr.appendChild(cell('cell-num mono', row.end));
+  tr.appendChild(cell('cell-backtime mono', row.backtime));
+
+  const float = document.createElement('td');
+  if (row.isFloat) {
+    const chip = document.createElement('span');
+    chip.className = 'chip-float';
+    chip.textContent = 'FLOAT';
+    float.appendChild(chip);
+  }
+  tr.appendChild(float);
+
+  return tr;
+}
+
+function cell(className, text) {
+  const td = document.createElement('td');
+  td.className = className;
+  td.textContent = text ?? '';
+  return td;
+}
+
+function paintEditor(editor) {
+  if (!editor) { el.backdrop.hidden = true; return; }
+  el.backdrop.hidden = false;
+  el.editorPage.textContent = editor.page;
+  el.editorTitle.textContent = editor.slug;
+  el.editorText.value = editor.description ?? '';
+  el.editorBio.textContent = editor.speakerBio || 'No bio on file.';
+  el.editorText.focus();
+}
+
+/* ------------------------------------------------------------------ stubs --
+   Every handler below is a no-op placeholder. The timing engine gets wired
+   into these; none of them may grow arithmetic.
+   -------------------------------------------------------------------------- */
+
+function onStart() { Backtime.transport.start(); }
+function onNext()  { Backtime.transport.next();  }
+function onBack()  { Backtime.transport.back();  }   // subsumes UNDO
+function onPause() { Backtime.transport.pause(); }   // toggles pause/resume
+function onStop()  { Backtime.transport.stop();  }
+
+/** STUB: opens the slug editor for `page`. Engine supplies vm.editor. */
+function openEditor(page) {
+  Backtime.openEditor(page);
+}
+
+/** STUB: closes the slug editor without saving. */
+function closeEditor() {
+  Backtime.closeEditor();
+}
+
+/** STUB: persists the edited description. */
+function saveEditor(text) {
+  Backtime.saveEditor(text);
+}
+
+el.btnStart.addEventListener('click', onStart);
+el.btnNext .addEventListener('click', onNext);
+el.btnBack .addEventListener('click', onBack);
+el.btnPause.addEventListener('click', onPause);
+el.btnStop .addEventListener('click', onStop);
+
+$('btn-editor-cancel').addEventListener('click', () => closeEditor());
+$('btn-editor-save').addEventListener('click', () => saveEditor(el.editorText.value));
+el.backdrop.addEventListener('mousedown', (e) => {
+  if (e.target === el.backdrop) closeEditor();
+});
+
+document.addEventListener('keydown', (e) => {
+  if (el.backdrop.hidden) return;
+  if (e.key === 'Escape') { e.preventDefault(); closeEditor(); }
+  else if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+    e.preventDefault();
+    saveEditor(el.editorText.value);
+  }
+});
+
+/* Demo copy for the editor stub, lifted from data/rundown.json. */
+const DEMO_DESCRIPTIONS = {
+  A1: "In an AI-first world, everyone can be a builder. But building is just the beginning. Shipping and running reliable applications that users love is what matters. This session will reveal a critical truth: AI's primary role is that of an amplifier. It magnifies the strengths of high-performing organizations and the dysfunctions of struggling ones. Let's look at how your team can scale brilliance and eliminate bottlenecks, enabling builders everywhere.",
+  C1: "Android apps are about to be spoken to, not tapped. AppFunctions exposes an app's capabilities to on-device agents. This session walks the API surface, the manifest work, and the failure modes you hit the first time an agent calls into your app."
+};
+const DEMO_BIOS = {
+  A1: "Nathen Harvey leads the DORA team at Google Cloud. He leverages industry-shaping research to drive product strategy and help organizations improve software delivery speed, stability, and the developer experience. A frequent speaker on DevOps and AI, Nathen co-authored multiple DORA reports and contributed to “97 Things Every Cloud Engineer Should Know” (O’Reilly, 2020).",
+  C1: "Chrystian Vieyra Cortes is a mobile engineer at Thomson Reuters working on agent-ready Android surfaces."
+};
+
+/* --------------------------------------------------------------- bootstrap */
+
+Backtime.init(render);   // engine drives render() on a 250ms tick
+
+// Exposed so the engine (and a console poke) can drive the same entry point.
+window.render = render;
+</script>
+
+</body>
+</html>

@@ -1,0 +1,119 @@
+#!/usr/bin/env python3
+"""Scrape DevFest DC sessions -> data/rundown.json (frozen fixture).
+
+Run ONCE before the demo, on good wifi. The app reads the JSON, never the network.
+  python3 scripts/scrape_devfest.py            # fetch live
+  python3 scripts/scrape_devfest.py --html X   # re-parse a saved page
+"""
+import re, json, html, argparse, sys, datetime as dt, urllib.request
+from pathlib import Path
+
+URL = "https://www.devfestdc.org/sessions"
+UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/120.0 Safari/537.36"
+HARD_END = "17:00"          # 5pm happy hour, per devfestdc.org homepage. Immovable.
+MAX_SESSION_MIN = 50        # a session never absorbs a lunch-sized gap
+TURNAROUND_MAX = 15         # gaps <= this are turnarounds; longer are breaks/lunch
+
+def txt(s): return html.unescape(re.sub(r"<[^>]+>", "", s)).strip()
+
+def divs(card, cls):
+    return [txt(m) for m in re.findall(r'<div class="' + cls + r'[^"]*">(.*?)</div>', card, re.S)]
+
+def parse(page):
+    cards = re.findall(r'<div class="session-card">(.*?)(?=<div role="listitem"|\Z)', page, re.S)
+    out = []
+    for c in cards:
+        labels = divs(c, "label-1")
+        paras = [p for p in divs(c, "paragraph-grey-medium") if p]
+        loc = (divs(c, "label-4") or [""])[0]
+        out.append({
+            "start_raw": labels[0] if labels else "",
+            "kind": (labels[1] if len(labels) > 1 else "").title(),
+            "location": loc,
+            "track": (re.match(r"(Track \d)", loc) or [None, "Keynote"])[1] if loc else "",
+            "speakers": (divs(c, "dark-grey-heading-multiline-regular") or [""])[0],
+            "title": (divs(c, "blue-heading-multiline-medium") or [""])[0],
+            "description": paras[0] if paras else "",
+            "speaker_bio": paras[1] if len(paras) > 1 else "",
+        })
+    return out
+
+def to_min(s):
+    m = re.match(r"(\d{1,2}):(\d{2})\s*([ap])m", s.strip(), re.I)
+    if not m: return None
+    h, mi, ap = int(m[1]), int(m[2]), m[3].lower()
+    if ap == "p" and h != 12: h += 12
+    if ap == "a" and h == 12: h = 0
+    return h * 60 + mi
+
+def hhmm(m): return f"{m//60:02d}:{m%60:02d}"
+
+def build(sessions):
+    """Keynotes + Track 1 only, ordered, with breaks made explicit as float segments.
+
+    Blocks follow broadcast convention: the letter advances after every long break.
+    A = keynote, B = morning breakouts, C = afternoon breakouts.
+    """
+    keep = [s for s in sessions if s["track"] in ("Keynote", "Track 1")]
+    for s in keep: s["start_min"] = to_min(s["start_raw"])
+    keep = sorted([s for s in keep if s["start_min"] is not None], key=lambda s: s["start_min"])
+
+    hard_end = to_min("5:00pm")
+    segs = []
+    block, n = "A", 0
+
+    def add(**kw):
+        nonlocal n; n += 1
+        segs.append({"page": f"{block}{n}", **kw})
+
+    for i, s in enumerate(keep):
+        last = i + 1 == len(keep)
+        nxt = hard_end if last else keep[i + 1]["start_min"]
+        gap = nxt - s["start_min"]
+        planned = min(gap, MAX_SESSION_MIN)
+        add(title=s["title"], speakers=s["speakers"], kind=s["kind"] or "Session",
+            location=s["location"], planned_min=planned, is_float=False,
+            start=hhmm(s["start_min"]), end=hhmm(s["start_min"] + planned),
+            description=s["description"], speaker_bio=s["speaker_bio"])
+
+        rest = gap - planned
+        if rest > 0:
+            long_break = rest > TURNAROUND_MAX
+            if last:            name = "Buffer to Happy Hour"
+            elif not long_break: name = "Turnaround"
+            elif 11 * 60 <= s["start_min"] + planned <= 14 * 60: name = "Lunch"
+            else:               name = "Break"
+            add(title=name, speakers="", kind="Break", location="",
+                planned_min=rest, is_float=True,
+                start=hhmm(s["start_min"] + planned), end=hhmm(nxt),
+                description="", speaker_bio="")
+        else:
+            long_break = False
+
+        if i == 0 or long_break:      # keynote closes A; any long break closes its block
+            if not last:
+                block, n = chr(ord(block) + 1), 0
+
+    return {"generated_at": dt.datetime.now().isoformat(timespec="seconds"),
+            "source": URL, "hard_end": HARD_END,
+            "hard_end_note": "5pm happy hour (devfestdc.org homepage). Immovable.",
+            "segments": segs}
+
+if __name__ == "__main__":
+    ap = argparse.ArgumentParser(); ap.add_argument("--html"); a = ap.parse_args()
+    page = Path(a.html).read_text("utf-8") if a.html else \
+        urllib.request.urlopen(urllib.request.Request(URL, headers={"User-Agent": UA}), timeout=30).read().decode("utf-8")
+    alls = parse(page)
+    if len(alls) < 10: sys.exit(f"FAIL: parsed only {len(alls)} cards — page markup changed")
+    rd = build(alls)
+    Path("data/sessions-all.json").write_text(json.dumps(alls, indent=1))
+    Path("data/rundown.json").write_text(json.dumps(rd, indent=1))
+    Path("data/rundown.js").write_text(
+        "// Generated by scripts/scrape_devfest.py — do not edit by hand.\n"
+        "// ES-module copy of rundown.json so the app runs from file:// with no server.\n"
+        "export default " + json.dumps(rd, indent=1) + ";\n")
+    tot = sum(s["planned_min"] for s in rd["segments"])
+    print(f"{len(alls)} cards -> {len(rd['segments'])} segments, {tot} min planned, hard end {rd['hard_end']}")
+    for s in rd["segments"]:
+        f = "FLOAT" if s["is_float"] else "     "
+        print(f"  {s['page']:<4} {s['start']}-{s['end']} {s['planned_min']:>3}m {f} {s['title'][:52]}")

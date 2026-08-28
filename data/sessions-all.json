@@ -1,0 +1,239 @@
+[
+ {
+  "start_raw": "9:15 am",
+  "kind": "Keynote",
+  "location": "Fuse Conference Center 1311",
+  "track": "Keynote",
+  "speakers": "Nathen Harvey",
+  "title": "Building in the AI-first world: Scale brilliance, not bottlenecks",
+  "description": "In an AI-first world, everyone can be a builder. But building is just the beginning. Shipping and running reliable applications that users love is what matters. This session will reveal a critical truth: AI's primary role is that of an amplifier. It magnifies the strengths of high-performing organizations and the dysfunctions of struggling ones. Let's look at how your team can scale brilliance and eliminate bottlenecks, enabling builders everywhere.",
+  "speaker_bio": "Nathen Harvey leads the DORA team at Google Cloud. He leverages industry-shaping research to drive product strategy and help organizations improve software delivery speed, stability, and the developer experience. A frequent speaker on DevOps and AI, Nathen is dedicated to building solutions that empower technical communities. He co-authored multiple DORA reports and contributed to \"97 Things Every Cloud Engineer Should Know\" published by O\u2019Reilly in 2020",
+  "start_min": 555
+ },
+ {
+  "start_raw": "10:00 am",
+  "kind": "Breakout Session",
+  "location": "Track 1 - Fuse Conference Center 1311 A",
+  "track": "Track 1",
+  "speakers": "Amanda J Kendal-Brown",
+  "title": "Two Tablets, One Bench: Real-Time Multiplayer at the Edge with Durable Objects and Workers AI (Capital One)",
+  "description": "Picture two roller derby coaches at opposite ends of a bench, both holding tablets and both needing to see the same jam unfold in real time, with no backend team, no compromise on the live experience, and a third read-only tablet they can hand to whoever wanders over. That\u2019s Bench Witch, and the underlying problem is everywhere: collaborative whiteboards, multi-user POS systems, shared dashboards, and any product where multiple clients need to edit shared state in real time.",
+  "speaker_bio": "Amanda Kendal-Brown is a Senior Front-End Engineer at Capital One with a decade of experience building accessible, AI-enabled web applications in React, TypeScript, and Vue. She built Bench Witch, the subject of this talk, for her own roller derby team. Outside of code, Amanda is a two-sport international athlete, representing Trinidad & Tobago on the National Archery Team and Team West Indies at three Roller Derby World Cups (2014, 2018, 2025). She is also a classically-trained percussionist specializing in steel pan and orchestral percussion, and currently performs baritone with the Reading Buccaneers Drum & Bugle Corps. Based in Fairfax, VA, she's passionate about building tools for the communities she's part of and bringing underrepresented voices to the technical stage.",
+  "start_min": 600
+ },
+ {
+  "start_raw": "10:00 am",
+  "kind": "Breakout Session",
+  "location": "Track 2 - Fuse Conference Center 1311 B",
+  "track": "Track 2",
+  "speakers": "Allen Firstenberg, Noble Ackerson",
+  "title": "Immersive vs Ambient XR: The Debate (myTurn pbc)",
+  "description": "A debate is raging in the XR community - which is the \"correct\" form factor for Intelligent Eyewear? Should we be focusing on the ambient experience from \"AI Glasses\" such as the models now appearing from Google, Samsung, Gentle Monster, and Warby Parker? Or should we have more of an immersive AR or VR experience, such as those from XREAL or the Apple VisionPro? Allen and Noble continue their many-year-long debate on this topic, last heard at DevFest DC in 2017. Which is the right technology?",
+  "speaker_bio": "By day, Allen is a Senior Project Engineer at spiders.com where he\u2019s been instrumental in creating websites and mobile apps for companies and organizations, ranging from the American Booksellers Association to the National Science Foundation. By night he creates tools, software, and tutorials to help people share their stories and improve their digital lives. You'll find him contributing to the LangChainJS open-source project, as one of the two hosts of the \"Two Voice Devs\" podcast, and co-author of the O\u2019Reilly book \u201cDesigning and Developing for Google Glass\u201d. He is a Google Developer Expert for Google Cloud, Google Workspace, and the Google Assistant and has been known to occasionally wear light blue shirts."
+ },
+ {
+  "start_raw": "10:00 am",
+  "kind": "Breakout Session",
+  "location": "Track 3 - Van Metre Multipurpose 126",
+  "track": "Track 3",
+  "speakers": "Bryce Howitson",
+  "title": "Human Computer Interaction: The UX of AI (Availity)",
+  "description": "Prompt Engineer, so hot right now! Do you wonder why we need an entire specialization dedicated to communicating with a computer? Does it feel like \"it just doesn't get you\" when \"chatting\" with AI tools? In this session, we'll cover the history of ways humans have communicated with computers. You'll see why \"natural language\" doesn't seem to translate as you expected. Finally, you'll learn options for creating an interface with AI that doesn't require a special title. Along the way, you'll learn to create trust and reduce hallucinations.",
+  "speaker_bio": "Bryce is obsessed with creating products that people want to use. He helps organizations of all sizes test, and ship their ideas. Bryce has been speaking since the age of 3. Sometimes called a designer, a developer, a strategist, a writer, and even a carpenter, he has led teams and worked in the trenches. Bryce is a Google Developer Expert in Web Technologies, a certified Design Sprint Master, a list over-user, and a recovering \"filler word\" addict. He shares his knowledge by mentoring and teaching from his homeland, the not-always-frozen Minnesota."
+ },
+ {
+  "start_raw": "10:50 am",
+  "kind": "Breakout Session",
+  "location": "Track 3 - Van Metre Multipurpose 126",
+  "track": "Track 3",
+  "speakers": "Brandon Wagner",
+  "title": "Kubernetes Node Autoscaling w/ Karpenter (Oxide Computer Company)",
+  "description": "Kubernetes has changed how we manage cloud and on-prem environments. But some aspects of the node lifecycle have not fully embraced the Kubernetes API. This has meant context-switching between IaC tools and Kubernetes which adds unnecessary complexity. Karpenter aims to modernize node autoscaling and lifecycle management in Kubernetes: it auto-discovers cloud capabilities, launches the best hardware for the job, and powers it down when it's no longer needed. Come learn about Karpenter and see it in action!",
+  "speaker_bio": "Brandon Wagner graduated from George Mason University with a bachelor's in Computer Science and a master's in Information Security. He began his career working on fire protection software for nuclear power plants before spending over eight years at AWS, working on EC2, EKS, and Route 53. He worked on Karpenter pre-launch and as a core maintainer for several years after. Brandon now works at Oxide Computer Company, where he brings cloud and Kubernetes capabilities to hardware that you own!"
+ },
+ {
+  "start_raw": "10:50 am",
+  "kind": "Fireside Chat",
+  "location": "Track 1 - Fuse Conference Center 1311 A",
+  "track": "Track 1",
+  "speakers": "Rezaur Rahman, John Lee",
+  "title": "Challenges, considerations, and capabilities in building agentic systems",
+  "description": "What does it take to ship agentic AI that works, not in a demo but in production systems where the answers matter? Drawing on three real AI-native platforms (a nationwide geospatial deep-research system, a permitting impact-simulation engine, and a detection-as-code cybersecurity threat-hunting pipeline), this session distils hard-won lessons from applying the latest frontier AI research in the field. We'll cover why your harness needs continuous re-engineering as model capabilities scale (and why you should be ready to throw away your code), how to design agent memory architectures that manage context and memory together, and why more agents isn't always better. We'll dig into evals as the backbone of iteration, cybersecurity considerations unique to AI-native systems, and self-evolving architectures where the system optimizes its own prompts, algorithms, and orchestration topology. You'll leave with practical patterns for building agentic systems that survive contact with reality and with the next model release.",
+  "speaker_bio": "John Lee is the cofounder and CEO of SZNS Solutions, an AI-native software services & consulting company specializing in Google Cloud Platform. SZNS (pronounced \"seasons\") was named Partner of the Year for Government Services by Google Cloud in 2026. John previously led blockchain efforts at Google. John Lee is the cofounder and CEO of SZNS Solutions, an AI-native software services & consulting company specializing in Google Cloud Platform. SZNS (pronounced \"seasons\") was named Partner of the Year for Government Services by Google Cloud in 2026. John previously led blockchain efforts at Google.",
+  "start_min": 650
+ },
+ {
+  "start_raw": "10:50 am",
+  "kind": "Panel Discussion",
+  "location": "Track 2 - Fuse Conference Center 1311 B",
+  "track": "Track 2",
+  "speakers": "Vik Kumar, Tyler Gray",
+  "title": "From Shadow AI to Secure AI: Build a Managed AI Platform in a Weekend!",
+  "description": "The AI genie is out of the bottle, often with free rein to explore and expose data of all types. New AI models promise better results at lower costs, but can you really trust them? Join our session to learn how you could deploy a fully governed, secure and model-agnostic AI system by Monday! Go behind the scene and learn about the architecture Cloudflare used to build our own secure, model-agnostic AI system, now available for free via open source. Using the same reference architecture Cloudflare built for our own workforce, you'll see how a single builder can stand up a secure, model-agnostic AI system for an entire organization. We'll walk through the architecture live: routing every model call through one control point for cost and safety, hosting MCP servers remotely instead of on laptops, exposing internal systems and SaaS through governed MCP portals, and putting Cloudflare One\u2019s Zero Trust SASE platform in front of every request so people and agents only reach what they're allowed to. You'll leave with the blueprint and open source building blocks to become your organization's AI security hero. The session is applicable for any business or engineering leader / security architect concerned about how AI is spreading across your organization.",
+  "speaker_bio": "Vik Kumar is a Principal, Strategic Accounts at Cloudflare."
+ },
+ {
+  "start_raw": "11:45 am",
+  "kind": "Breakout Session",
+  "location": "Track 3 - Van Metre Multipurpose 126",
+  "track": "Track 3",
+  "speakers": "Chanel Power",
+  "title": "#AirClaw: Build Self-Healing Agents with Apache Airflow and NVIDIA NemoClaw (Mentor Me Collective)",
+  "description": "#AirClaw demonstrates how Apache Airflow and NVIDIA NemoClaw transform static pipelines into autonomous agents that reason, act, and escalate intelligently. Two live demos ( a NYC 311 overnight triage agent and an automated LLM model migration evaluation comparing GPT-4o against Llama-3.3-Nemotron-Super ) show the same three-layer architecture solving real production problems across two completely different domains.",
+  "speaker_bio": "A Senior Machine Learning Engineer, Developer Relations leader, and Founder & CEO of Mentor Me Collective, Chanel operates at the intersection of technical excellence and global access. She has shipped production ML systems, advised 30+ early-stage AI product teams annually, and built a global technical institute serving 40K+ developers across 120+ countries, generating $45M+ in career outcomes for 600+ first-generation technologists. Mentor Me Collective is a Google for Startups partner, Nasdaq Entrepreneurial Center alumni, and by every measure, a developer relations program at true scale, with enablement programs running at 3x industry engagement benchmarks and partnerships spanning Google Cloud, IBM, and Grow with Google."
+ },
+ {
+  "start_raw": "11:45 am",
+  "kind": "Breakout Session",
+  "location": "Track 2 - Fuse Conference Center 1311 B",
+  "track": "Track 2",
+  "speakers": "Pragya Keshap",
+  "title": "From APIs to AI Agents",
+  "description": "In this session, we will explore how to design a secure tool-calling workflow using Gemini, Agent Development Kit, and Google Cloud. Attendees will learn how to move from a simple chatbot prototype to a production-ready agent architecture that can safely call enterprise APIs, return structured responses, and log actions for review.",
+  "speaker_bio": "I help organizations build scalable, secure, and AI-ready infrastructure on Google Cloud. As a Google Developer Expert, I specialize in Kubernetes, GKE, enterprise cloud architecture, and AI/ML infrastructure \u2014 bridging the gap between cutting-edge technology and real-world enterprise adoption. My work spans technical thought leadership, open-source contributions within the CNCF ecosystem, and speaking at global conferences where I share practical insights on cloud-native transformation. I'm also actively involved in research at the intersection of cloud infrastructure and AI."
+ },
+ {
+  "start_raw": "11:45 am",
+  "kind": "Breakout Session",
+  "location": "Track 1 - Fuse Conference Center 1311 A",
+  "track": "Track 1",
+  "speakers": "Naveen Nigam, Chris Grimm, Andrew Gamino-Cheong",
+  "title": "Building in the AI Era: What Developers Need to Know About AI Policy (Google, Developers Alliance, Trustible)",
+  "description": "AI is moving fast\u2014and policy is racing to catch up. This fireside chat explores the latest developments in AI policy, what developers should expect next, and why it matters.",
+  "speaker_bio": "Naveen Nigam is a natural leader experienced in leading large cross-functional teams. 20 years of strategic management, program/project management, operations, change management & policy creation experience. A tenacious attitude, skilled at fostering strategic alignment at all levels of an organization. Comes with a track record and proven ability to build relationships, creating 'win-win' situations.",
+  "start_min": 705
+ },
+ {
+  "start_raw": "1:30 pm",
+  "kind": "Breakout Session",
+  "location": "Track 1 - Fuse Conference Center 1311 A",
+  "track": "Track 1",
+  "speakers": "Chrystian Vieyra Cortes",
+  "title": "AppFunctions: Making Your Android App Agent-Ready (Thomson Reuters)",
+  "description": "The AppFunctions Jetpack framework allows apps to expose structured, callable capabilities directly to the OS and on-device AI agents. This marks a fundamental shift away from fragile screen scraping and rigid intents, enabling true agentic development where models natively discover and invoke your app's features. We will demystify how AppFunctions work and contrast them with older approaches like App Actions and MCP. Through a focused code demo, you will see how to define typed, callable functions that allow agents to execute tasks straight from natural language prompts.",
+  "speaker_bio": "I am a mobile engineering leader focused on building strong teams and mobile apps that reach millions of users. I am currently Director of Software Engineering at Thomson Reuters, where I lead mobile engineering for the Reuters app. My work focuses on engineering execution, platform modernization, and helping distributed teams deliver high-quality mobile experiences.",
+  "start_min": 810
+ },
+ {
+  "start_raw": "1:30 pm",
+  "kind": "Breakout Session",
+  "location": "Track 3 - Van Metre Multipurpose 126",
+  "track": "Track 3",
+  "speakers": "Alexandrea Stylianou",
+  "title": "Schema Archaeology: How AI accelerated an Undocumented Database to an Autonomous Finance Agent (Tatto Forma)",
+  "description": "It\u2019s Monday morning and the Accounts Payable team gets a Slack message: \u201cWhy was invoice INV-2291 flagged, and how much exposure do we have with this vendor?\u201d The data is in a legacy Purchase-to-Pay (P2P) system \u2014 dozens of tables, no data dictionary, weak foreign keys, and a schema that only one retiring analyst ever fully understood. Unfortunately, a generic chatbot would only give guesses or a junior analyst would spend half the day tracing data across joins nobody documented. I will show you how I built a P2P Context Engine to handle exactly that kind of question \u2014 end to end, with financial precision.",
+  "speaker_bio": "Data Architect, Data Scientist, and ML/AI expert who builds production applications to transform data into faster decisions, lower risk, and better customer outcomes."
+ },
+ {
+  "start_raw": "1:30 pm",
+  "kind": "Breakout Session",
+  "location": "Track 4 - Build with AI + Code Labs - Van Metre Multipurpose 125",
+  "track": "Track 4",
+  "speakers": "Christina Lin",
+  "title": "Architecting Long-Running, Resumable Agents with ADK 2 (Google)",
+  "description": "What happens when your AI agent needs to join a queue of 14,000 people, wait 40 minutes, survive a process crash mid-wait, and spend $400 of real money while you\u2019re asleep? Most agent tutorials teach you how to prompt. This hands-on workshop teaches you how to build long running agents using Google Cloud and the Agent Development Kit (ADK 2), you will hands-on build a ticketing agent from scratch and then break it. We'll pull the plug mid-execution, simulate race conditions, enforce financial spending fences, and deploy a resumable agent architecture that runs without you in the room.",
+  "speaker_bio": "As the Lead Advocate for Google Americas, Christina Lin bridges the gap between cutting-edge technologies and developer success. With deep expertise in Agentic systems, and modern cloud architectures\u2014including Google Cloud, Kubernetes, Apache Kafka, Java, Python, and Ansible\u2014she creates dynamic technical content and live demonstrations that drive the adoption of intelligent, scalable best practices. An open-source champion at heart, Christina\u2019s mission is to cultivate a highly collaborative, innovative, and deeply connected global developer community ready for the AI era."
+ },
+ {
+  "start_raw": "1:30 pm",
+  "kind": "Presentation",
+  "location": "Track 2 - Fuse Conference Center 1311 B",
+  "track": "Track 2",
+  "speakers": "Kalev Leetaru",
+  "title": "Building A Planetary-Scale AI System That Watches & Forecasts The Entire World",
+  "description": "Every day, billions of stories unfold across the globe in thousands of languages told through video, audio and text. See what it looks like to build a planetary-scale AI system that watches and reasons over the entire world in realtime, revealing the macro-level trends, uncovering hidden patterns, contextualizing, and even forecasting the future of where our world is heading.",
+  "speaker_bio": "Global Speaker, Tech Leader, Advisor & Futurist"
+ },
+ {
+  "start_raw": "2:20 pm",
+  "kind": "Breakout Session",
+  "location": "Track 2 - Fuse Conference Center 1311 B",
+  "track": "Track 2",
+  "speakers": "Chris Whong",
+  "title": "Great Maps Don't Happen by Accident: Building Exceptional Location Experiences with the Mapbox Android SDKs (Mapbox)",
+  "description": "Maps, search, navigation, real-world data \u2014 your users expect it all, and Mapbox delivers it in a single location platform built for Android developers. In this session, we'll start from zero and build up a fully featured location experience live: custom map styles, GeoJSON overlays, a working Search Box integration, and a turn-by-turn navigation flow with simulated routes and voice. We'll also cover what's new across the Mapbox ecosystem and show off the developer tools that help you move from idea to shipped feature, fast.",
+  "speaker_bio": "As a Senior Developer Evangelist at Mapbox with over four years of experience, I focus on enhancing developer relations and technical documentation to empower developers and facilitate their success. My work revolves around leading the development of docs.mapbox.com, a multi-site platform with millions of annual views, where I aim to create user-friendly, dynamic documentation and interactive tools. My expertise spans GIS, spatial analysis, and urban planning, all aimed at building innovative tools at the intersection of maps, data, and technology."
+ },
+ {
+  "start_raw": "2:20 pm",
+  "kind": "Breakout Session",
+  "location": "Track 3 - Van Metre Multipurpose 126",
+  "track": "Track 3",
+  "speakers": "Ramandeep Arora",
+  "title": "Beyond the Cloud: Building Physical AI with Embedded Systems (Stanley Black & Decker)",
+  "description": "Artificial intelligence is no longer confined to the cloud or screens - it is beginning to live inside the physical world. From smart wearables that monitor heart rate and detect anomalies in real time to industrial power tools that automatically adjust torque under changing load conditions, intelligence is shifting closer to where data is created and actions actually happen. This shift, often called edge computing, or physical AI, is redefining how we think about intelligence in everyday systems.",
+  "speaker_bio": "I'm Ramandeep Arora, and I'm an Embedded Software Engineer at Stanley Black & Decker, specializing in motor controls, IoT, and robotics systems for the power tools and industrial trade industry. I'm passionate about Embedded AI and Edge Intelligence with a focus on bringing machine learning closer to physical systems. Experienced on microcontrollers, motor controls, and building reliable, production-grade embedded solutions and advocating for making smart sustainable devices with advanced technology that is accessible and human-centric through engineering and community engagement."
+ },
+ {
+  "start_raw": "2:20 pm",
+  "kind": "Breakout Session",
+  "location": "Track 1 - Fuse Conference Center 1311 A",
+  "track": "Track 1",
+  "speakers": "William Lopez, Chris Tonjes, Gerry Gomez",
+  "title": "Where the Agent Stops: Boundaries, Orchestration, and Legacy Integration in Government AI",
+  "description": "An agent that pre-screens eligibility and an agent that determines eligibility are not the same system, but they can look identical in a demo. This panel is about the difference, told through two production systems: WIOA GO (agent-assisted eligibility screening for DC unemployment/workforce services) and the DC Department of Employment Services state system, which connect to create a seamless experience. We\u2019ll dig into where the decision boundary is actually implemented, how multiple agents coordinate on one case without stepping on each other, and what it takes to wire agents into legacy government infrastructure that was never built for them.",
+  "speaker_bio": "Will Lopez is the President and Co-Founder of BuildWithin, a technology company delivering AI-powered workforce solutions and apprenticeship management platforms. In his role, Will leads revenue strategy, financial planning, and government partnerships, driving innovation at the intersection of technology, public policy, and workforce development.\nUnder his leadership, BuildWithin has expanded nationally, helping government agencies, workforce boards, and employers modernize talent pipelines through skills-based hiring, apprenticeship programs, and AI-driven workforce technology. Previously, Will served on the executive leadership team at Phone2Action, helping lead the company through acquisition, the integrations of KnowWho and GovPredict, and its successful exit in 2019.",
+  "start_min": 860
+ },
+ {
+  "start_raw": "3:15 pm",
+  "kind": "Breakout Session",
+  "location": "Track 2 - Fuse Conference Center 1311 B",
+  "track": "Track 2",
+  "speakers": "Santosh Srinivasaiah",
+  "title": "Systems That Settle: Control Theory for Adaptive AI (Diaconia LLC)",
+  "description": "Agents, recommenders, and reinforcement-learning loops all tune themselves at runtime \u2014 and most ship with no guarantee they'll settle rather than oscillate, drift, or quietly degrade until it surfaces in production. We're good at building systems that adapt, and bad at proving they'll behave. Control engineers solved a version of this decades ago. Lyapunov stability theory proves a system converges to its target instead of assuming it will \u2014 the same principle that keeps a self-driving car centered in its lane. This session brings it to the systems we build now, and is honest about the catch: a proof is only as strong as the model beneath it. The math is rigorous; the assumptions are where the risk hides. That line \u2014 what the proof buys, and where it stops \u2014 is the talk.",
+  "speaker_bio": "Santosh Srinivasaiah is Vice President of Data Science & Analytics at Diaconia, with over 25 years of experience building AI systems at the intersection of computational neuroscience and generative AI. He has spent many years architecting machine-learning platforms for regulatory science, and today leads the design of generative and agentic AI grounded in brain-inspired algorithms. A published researcher across neuroscience and applied AI, he is the architect of STACS, a framework that applies Lyapunov stability theory to bring provable convergence guarantees to adaptive cognitive systems \u2014 the same principle at the heart of this talk. He teaches as adjunct faculty at Northern Virginia Community College and is a member of the ACM and IEEE. A returning DevFestDC speaker, Santosh is back to share how control theory can make the systems we build actually settle"
+ },
+ {
+  "start_raw": "3:15 pm",
+  "kind": "Breakout Session",
+  "location": "Track 1 - Fuse Conference Center 1311 A",
+  "track": "Track 1",
+  "speakers": "Noble Ackerson",
+  "title": "The Invisible City: Building Real-Time Spatial Agents (and Surviving Reality) (Leidos)",
+  "description": "If your multi-agent pipeline forces users to watch a loading spinner while it thinks, you have already lost them. But if your agent hallucinates a high-pressure gas line on a city street, you have a much bigger problem.\nAligned with the \"Build Edition\" theme, this session strips away the \"Hello, World\" chatbot boilerplate to walk through the architecture of The Invisible City\u2014a real-time, see-through AR visualization of underground municipal infrastructure. We will dissect how to pair Gemini\u2019s multimodal vision capabilities with a Next.js and FastAPI stack to build event-driven agents that actually interact with the physical world.",
+  "speaker_bio": "Noble Ackerson is the Senior Director of AI and Agentic Solutions at Leidos, a Google Developer Expert (GDE) for AI, and an instructor for Udacity's Agentic AI programs. With over 19 years of experience bridging software engineering and machine learning, Noble focuses on \"calibrated trust\", building responsible, governed, and highly performant distributed multi-agent systems that survive real-world deployment. He actively prototypes at the intersection of generative UI, spatial computing, and vendor-agnostic agent orchestration.",
+  "start_min": 915
+ },
+ {
+  "start_raw": "3:15 pm",
+  "kind": "Breakout Session",
+  "location": "Track 3 - Van Metre Multipurpose 126",
+  "track": "Track 3",
+  "speakers": "Meheret Egzerab",
+  "title": "Lessons from Shipping a Real App: Vibe Coding in Production (Studio Rehoboth)",
+  "description": "I vibe-coded a consumer iOS app and shipped it solo, ~5,000 downloads, ~33% paid conversion, zero ad spend. This talk is everything those numbers didn't teach me until after I shipped. I'll walk through the real lessons from taking AI-assisted code into production: the layer AI silently skips (error reporting and the analytics that actually predict retention and conversion), the AI-generated code that broke in ways I didn't see coming. Real dashboards, real crash logs, real numbers, including the app I'm still getting wrong right now.",
+  "speaker_bio": "Meheret Egzerab is the solo founder of Studio Rehoboth, a one-person app studio, where she designs, builds, and ships consumer apps using AI-assisted development. She previously worked as a software engineer at Capital One. She speaks and writes about what it actually takes to ship AI-built software into production as a team of one."
+ },
+ {
+  "start_raw": "3:15 pm",
+  "kind": "Breakout Session",
+  "location": "Track 4 - Build with AI + Code Labs - Van Metre Multipurpose 125",
+  "track": "Track 4",
+  "speakers": "Erich Kottke",
+  "title": "Vibe Coding: Think, Build & Grow with AI",
+  "description": "Everyone has a favourite framework. Nobody has tried all of them on the same problem. You learned LangChain from a tutorial. Your colleague swears by ADK. Someone says AgentKit is the future. CrewAI keeps showing up in multi-agent demos. And your manager asks why you are writing code when Vertex AI Agent Builder exists. Each one solves a different problem, and picking the wrong one means weeks fighting the framework instead of building your product.",
+  "speaker_bio": "Erich Kottke is the founder of EZDISPLAY"
+ },
+ {
+  "start_raw": "4:05 pm",
+  "kind": "Breakout Session",
+  "location": "Track 3 - Van Metre Multipurpose 126",
+  "track": "Track 3",
+  "speakers": "Olga Ostrovskiy",
+  "title": "From Bookshelf to Borderline: Building a Multi-Agent AI That Turns Books Into Travel (My Storyland)",
+  "description": "What if an AI could read a novel and hand you an itinerary? That's the question behind My Storyland \u2014 a multi-agent Gemini system that extracts real-world locations from literary works and transforms them into personalized travel experiences. In this talk, I'll walk through how I designed and built a collaborative agent architecture \u2014 Guide, Book Searcher, Location Extractor, and Composer \u2014 that doesn't just chain prompts, but assigns distinct roles, manages context handoffs, and synthesizes outputs into something genuinely useful. I'll cover how I evaluated agent performance using Langfuse, why human-in-the-loop checkpoints matter even when your agents \"work,\" and how Pydantic-validated schemas keep your agent outputs structured and trustworthy instead of free-form and fragile.",
+  "speaker_bio": "Olga Ostrovskiy is a lead software engineer and founder of My Storyland (mystoryland.ai), a book-inspired travel platform powered by a multi-agent Gemini AI architecture. She placed 3rd at Google's 5-Day AI Agents Intensive (December 2025) for her work on My Storyland and is currently building it into a startup. She builds with NestJS, React, and Google's AI stack."
+ },
+ {
+  "start_raw": "4:05 pm",
+  "kind": "Breakout Session",
+  "location": "Track 2 - Fuse Conference Center 1311 B",
+  "track": "Track 2",
+  "speakers": "Ammar Ekbote",
+  "title": "Moving Beyond the Prompt: Powering Google Antigravity with MCP Servers (Pinterest)",
+  "description": "In this talk, we will explore the architecture of local (stdio) and remote (HTTP) MCP servers within the Antigravity suite (2.0, IDE, and CLI). We\u2019ll walk through how to build a custom MCP server from scratch, securely handle authentication via Application Default Credentials (ADC), and set up strict access control policies. Attendees will leave with a concrete understanding of how to transform an AI from a text generator into an autonomous development partner capable of safely executing data-aware workflows.",
+  "speaker_bio": "Ammar Govind Ekbote is a Senior Software Engineer at Pinterest, where he focuses on building and scaling global software infrastructure. An expert in distributed data systems, cloud-native infrastructure, and kernel-level observability, Ammar has a proven track record of bridging complex back-end architectures with emerging AI technologies. He holds a Master of Science in Computer Science from North Carolina State University and is a Senior Member of the IEEE. With 9+ approved U.S. patents and extensive experience judging elite hackathons and industry innovation awards, Ammar is passionate about building secure, context-aware systems that empower the next generation of AI-driven development tools."
+ }
+]
