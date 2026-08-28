@@ -90,7 +90,12 @@ function computeDelta(state, nowSec) {
   const { segments, currentIndex, hardEndSec, segmentElapsedSec } = state;
   let remainingSec = 0;
   if (currentIndex < segments.length) {
-    remainingSec = segments[currentIndex].plannedSec - segmentElapsedSec;
+    // Clamp at zero. Unclamped, `plannedSec - elapsed` goes negative at exactly the
+    // rate the wall clock advances, so the delta cancels to a constant and the readout
+    // never moves while a segment runs long. Clamped, the overrun accumulates second by
+    // second — which is the number a producer is actually watching. It also makes the
+    // readout CONTINUOUS across NEXT: banking the actual no longer jumps it.
+    remainingSec = Math.max(0, segments[currentIndex].plannedSec - segmentElapsedSec);
     for (let j = currentIndex + 1; j < segments.length; j++) remainingSec += segments[j].plannedSec;
   }
   const projectedEndSec = nowSec + remainingSec;
@@ -380,6 +385,10 @@ const nowSec = () => {
   return d.getHours() * 3600 + d.getMinutes() * 60 + d.getSeconds() + (S?.clockOffsetSec || 0);
 };
 
+// Segment starts are snapped to a whole second so that elapsed and wall-clock tick over
+// at the same instant; otherwise their floors disagree by 1s half the time.
+const alignedNow = () => Math.round(Date.now() / 1000) * 1000;
+
 // ---------- persistence ----------
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch {} };
 const restore = () => { try { return JSON.parse(localStorage.getItem(KEY) || 'null'); } catch { return null; } };
@@ -402,7 +411,9 @@ const rewind = () => {
 function segmentElapsedSec() {
   if (!S.segStartedMs) return 0;
   const pausedNow = S.status === 'paused' && S.pausedAtMs ? Date.now() - S.pausedAtMs : 0;
-  return Math.max(0, Math.round((Date.now() - S.segStartedMs - S.pausedAccumMs - pausedNow) / 1000));
+  // floor, not round — and segStartedMs is second-aligned (see T.start / T.next) so this
+  // ticks over in lockstep with nowSec(). Mixed rounding here made the readout jitter +/-1s.
+  return Math.max(0, Math.floor((Date.now() - S.segStartedMs - S.pausedAccumMs - pausedNow) / 1000));
 }
 
 // ---------- transport ----------
@@ -421,7 +432,7 @@ const T = {
       }
     }
     S.status = 'running';
-    S.segStartedMs = Date.now();
+    S.segStartedMs = alignedNow();
     S.pausedAccumMs = 0; S.pausedAtMs = null;
     save();
   },
@@ -432,7 +443,7 @@ const T = {
     if (cur) { cur.actualSec = segmentElapsedSec(); cur.done = true; }
     if (S.currentIndex < S.segments.length - 1) {
       S.currentIndex += 1;
-      S.segStartedMs = Date.now();
+      S.segStartedMs = alignedNow();
       S.pausedAccumMs = 0; S.pausedAtMs = null;
       if (S.status === 'paused') S.status = 'running';
     } else {
@@ -493,6 +504,7 @@ function buildVM() {
   const n = nowSec();
   const bts = backtimes(S.segments, S.hardEndSec);
   const idle = S.status === 'idle';
+  const stopped = S.status === 'stopped';
 
   const d = computeDelta({ ...S, segmentElapsedSec: elapsed }, n);
 
@@ -504,7 +516,7 @@ function buildVM() {
 
   // Float recommendation only when heavy.
   let recommendation = null;
-  if (!idle && d.state === 'HEAVY') {
+  if (!idle && !stopped && d.state === 'HEAVY') {
     // strictly AFTER the current index: you cannot drop the segment that is on air
     const floats = S.segments.filter((s, i) => s.is_float && !s.done && i > S.currentIndex);
     const r = solveFloats(floats, d.deltaSec);
@@ -531,11 +543,15 @@ function buildVM() {
     status: S.status,
     readout: idle
       ? { text: '—', label: 'STANDBY', state: 'ONTIME' }
-      : { text: fmtSigned(d.deltaSec), label: d.state, state: d.state },
+      : stopped
+        ? { text: '0:00', label: 'STOPPED', state: 'ONTIME' }
+        : { text: fmtSigned(d.deltaSec), label: d.state, state: d.state },
     conferenceClock: { text: fmtDur(Math.abs(confLeft)), negative: confLeft < 0 },
     segmentClock: idle
       ? { text: fmtDur(cur ? cur.plannedSec : 0), negative: false }
-      : { text: fmtDur(Math.abs(segLeft)), negative: segLeft < 0 },
+      : stopped
+        ? { text: '0:00', negative: false }
+        : { text: fmtDur(Math.abs(segLeft)), negative: segLeft < 0 },
     recommendation,
     rows: S.segments.map((s, i) => ({
       page: s.page,

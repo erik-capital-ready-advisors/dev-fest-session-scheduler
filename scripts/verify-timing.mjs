@@ -72,10 +72,15 @@ eq('B back-times to 11:10', fmtHHMM(synBts[1]), '11:10');
 eq('C back-times to 11:30', fmtHHMM(synBts[2]), '11:30');
 
 // ---------------------------------------------------------------------------
-head('3. A 2:00 segment that actually ran 4:00 moves the delta by exactly +2:00');
+head('3. An overrun accumulates LIVE, and NEXT does not double-count it');
 
-const now = parseHHMM('11:04');
-const before = {
+// The on-air segment's remaining time is clamped at zero. Consequence: while a segment
+// runs long the readout gets heavier every second (rather than sitting still until the
+// operator taps), and banking the actual on NEXT changes nothing — the overage was
+// already counted. Continuity across NEXT is the property that matters: a number that
+// jumps on a tap is a number an operator learns to distrust.
+const now0 = parseHHMM('11:00');
+const base = {
   segments: [
     { title: 'Demo', plannedSec: 120, actualSec: null, done: false },
     { title: 'Talk', plannedSec: 600, actualSec: null, done: false },
@@ -85,39 +90,51 @@ const before = {
   hardEndSec: parseHHMM('11:22'),
   currentIndex: 0,
   status: 'running',
-  segmentElapsedSec: 240, // 4:00 into a 2:00 segment — 2 minutes over, not yet tapped
-};
-// NEXT: the segment is completed with its ACTUAL 4:00 and we advance. Same wall-clock instant.
-const after = {
-  ...before,
-  segments: [
-    { ...before.segments[0], actualSec: 240, done: true },
-    before.segments[1],
-    before.segments[2],
-  ],
-  currentIndex: 1,
   segmentElapsedSec: 0,
 };
-const d0 = computeDelta(before, now);
-const d1 = computeDelta(after, now);
-const show = (tag, d) =>
-  console.log(
-    `  ${tag}  remaining ${fmtSigned(d.remainingSec).padStart(8)}   ` +
-      `projected end ${fmtHHMM(d.projectedEndSec)}   delta ${fmtSigned(d.deltaSec).padStart(7)}  ${d.state}`
-  );
-console.log(`  now ${fmtHHMM(now)}   hard end ${fmtHHMM(before.hardEndSec)}   planned 2:00 / 10:00 / 10:00`);
-show('before NEXT ', d0);
-show('after  NEXT ', d1);
-eq('delta moves by exactly +120s', d1.deltaSec - d0.deltaSec, 120);
-eq('before NEXT the show reads ON TIME', d0.state, 'ONTIME');
-eq('after NEXT the show is HEAVY', d1.state, 'HEAVY');
-eq('after NEXT it is heavy by exactly +2:00', fmtSigned(d1.deltaSec), '+2:00');
+const at = (elapsed) => computeDelta({ ...base, segmentElapsedSec: elapsed }, now0 + elapsed);
+console.log(`  now 11:00   hard end ${fmtHHMM(base.hardEndSec)}   planned 2:00 / 10:00 / 10:00`);
+for (const e of [0, 60, 120, 180, 240]) {
+  const d = at(e);
+  console.log(`  elapsed ${fmtDur(e).padStart(5)}  delta ${fmtSigned(d.deltaSec).padStart(7)}  ${d.state}`);
+}
+eq('on plan at 0:00 -> ON TIME', at(0).state, 'ONTIME');
+eq('still on plan at 2:00 -> 0:00', fmtSigned(at(120).deltaSec), '0:00');
+eq('1:00 over -> +1:00 live, without any tap', fmtSigned(at(180).deltaSec), '+1:00');
+eq('2:00 over -> +2:00 live, without any tap', fmtSigned(at(240).deltaSec), '+2:00');
+eq('2:00 over reads HEAVY', at(240).state, 'HEAVY');
 
-// The delta is a segment-boundary number: it holds steady while a segment runs (elapsed and now
-// advance together) and jumps when NEXT banks the actual. The per-segment clock is what counts
-// past zero live. Do not "fix" this by clamping remaining at 0 — that kills the +2:00 jump above.
-const midSegment = computeDelta({ ...before, segmentElapsedSec: 300 }, now + 60);
-eq('delta holds steady mid-segment', midSegment.deltaSec, d0.deltaSec);
+// ... and tapping NEXT at that instant must not move it again.
+const d0 = at(240);
+const d1 = computeDelta({
+  ...base,
+  segments: [{ ...base.segments[0], actualSec: 240, done: true }, base.segments[1], base.segments[2]],
+  currentIndex: 1,
+  segmentElapsedSec: 0,
+}, now0 + 240);
+console.log(`  before NEXT ${fmtSigned(d0.deltaSec)}   after NEXT ${fmtSigned(d1.deltaSec)}`);
+eq('NEXT does not double-count the overrun', d1.deltaSec - d0.deltaSec, 0);
+eq('after NEXT still +2:00 HEAVY', fmtSigned(d1.deltaSec), '+2:00');
+
+// Finishing EARLY still snaps lighter on the tap: unspent planned time is released.
+const early = computeDelta({
+  ...base,
+  segments: [{ ...base.segments[0], actualSec: 60, done: true }, base.segments[1], base.segments[2]],
+  currentIndex: 1,
+  segmentElapsedSec: 0,
+}, now0 + 60);
+eq('finishing 1:00 early -> -1:00 LIGHT', fmtSigned(early.deltaSec), '-1:00');
+
+// While a segment is running to plan, the delta must be perfectly STILL — elapsed and the wall
+// clock advance together and cancel. A readout that twitches by a second is a readout nobody
+// trusts. (The twitch that shipped came from mixed rounding in the caller, not from here:
+// nowSec() truncated one Date while segmentElapsedSec() rounded another.) Once the segment
+// goes OVER, the clamp above takes effect and the overage accumulates second by second.
+const still = [0, 15, 30, 60, 90, 119].map((e) => at(e).deltaSec);
+eq('delta is perfectly still while on plan', new Set(still).size, 1);
+eq('  ... and that value is 0:00', fmtSigned(still[0]), '0:00');
+const over = [121, 122, 123].map((e) => at(e).deltaSec);
+eq('delta advances 1s per second once over', JSON.stringify(over), JSON.stringify([1, 2, 3]));
 
 // ---------------------------------------------------------------------------
 head('4. Float solver on the real rundown — deltaSec = 20:00 heavy');

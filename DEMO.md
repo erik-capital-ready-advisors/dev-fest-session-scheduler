@@ -24,10 +24,16 @@ it — the real wall clock is the point.
    Screen is showing today's real DevFest DC rundown — keynote plus Track 1, scraped from
    devfestdc.org this morning. Back-timed from the 5pm happy hour, which does not move.
 2. Hit **START**. Readout reads `0:00 ONTIME`.
-3. *"Nathen's keynote is planned for 45 minutes. It runs 49."*
-   Hit **NEXT**.
-4. Readout **snaps to `+4:00 HEAVY`**. Beneath it, in the same beat:
-   > **Drop "Turnaround" → you land at −1:00**
+3. *"Nathen's keynote is planned for 45 minutes. Watch what happens when it runs long."*
+   The readout is still while you are on plan. The moment the segment passes 45:00 it
+   **starts climbing, a second at a time** — `+0:01`, `+0:02`, `+0:30` — and the segment
+   clock flips red to `OVER`. Let it run visibly.
+4. At `+4:00 HEAVY` the cut appears beneath it:
+   > **Drop B3 "Turnaround" → you land at −1:00**
+
+   Hit **NEXT**. The number does **not** move — the overage was already counted. That
+   continuity is the point: a readout that jumps when you tap is one an operator
+   learns to distrust.
 5. *"That's back-timing and floats. It's how a control room has run a live show for fifty years —
    it has just never been in the hands of anyone running a meeting."*
 
@@ -57,6 +63,9 @@ The segment currently on air is never offered as a cut. You cannot drop what is 
 ## If something goes wrong on stage
 
 - Mis-tapped **NEXT** → hit **BACK**. It restores the prior state exactly. Verified.
+- **STOP** zeroes the readout and the segment clock (`0:00 / STOPPED`). The conference
+  clock keeps running — it is a wall clock to 17:00 and does not care whether you are
+  in a segment.
 - Numbers look wrong → `Backtime.reset()` then `Backtime.setClock('09:15')`.
 - Want to jump elsewhere in the day → `Backtime.setClock('13:30')`.
 

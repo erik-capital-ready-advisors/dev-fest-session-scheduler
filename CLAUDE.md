@@ -38,6 +38,21 @@ Build the UI first and you spend the back half debugging arithmetic through a re
 and the change persists to `localStorage`. The solver only ever considers floats **strictly after**
 the current index — a segment on air is not droppable.
 
+## The readout is live, not a segment-boundary number
+
+The on-air segment's remaining time is **clamped at zero** in `computeDelta`. Unclamped,
+`plannedSec - elapsed` goes negative at exactly the rate the wall clock advances, the delta
+cancels to a constant, and the readout never moves while a segment runs long. Clamped:
+
+- On plan, the delta is perfectly **still** (asserted in the gate — a twitching readout is
+  one nobody trusts; the twitch that shipped came from mixed rounding in `app.js`, where
+  `nowSec()` truncated one `Date` while `segmentElapsedSec()` rounded another).
+- Over plan, the overage **accumulates every second**.
+- `NEXT` does **not** double-count it. The readout is continuous across the tap.
+
+Segment starts are snapped to a whole second (`alignedNow()`) so elapsed and wall-clock cross
+the second boundary together. Do not reintroduce a second independent clock reading.
+
 ## Non-negotiables
 
 1. **Zero model calls on the critical path.** The scrape replaced paste-parse. If paste-parse comes
