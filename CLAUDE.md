@@ -53,6 +53,16 @@ cancels to a constant, and the readout never moves while a segment runs long. Cl
 Segment starts are snapped to a whole second (`alignedNow()`) so elapsed and wall-clock cross
 the second boundary together. Do not reintroduce a second independent clock reading.
 
+## Starts are the source of truth
+
+Durations are DERIVED from consecutive starts (`recomputeFromStarts` in `app.js`) — the same rule
+the scraper used, because devfestdc.org publishes start times only. Editing a START cell therefore
+changes the two adjacent durations and the back-time column follows; total planned time is
+conserved. Out-of-range edits are refused with a reason, never clamped.
+
+The table does **not** repaint while a START cell is being edited (`inlineEditOpen`). The engine
+paints ~4x/second and would otherwise tear the `<input>` out mid-keystroke. Clocks keep ticking.
+
 ## Non-negotiables
 
 1. **Zero model calls on the critical path.** The scrape replaced paste-parse. If paste-parse comes

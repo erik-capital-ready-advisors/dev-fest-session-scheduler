@@ -47,6 +47,41 @@ function segmentElapsedSec() {
   return Math.max(0, Math.floor((Date.now() - S.segStartedMs - S.pausedAccumMs - pausedNow) / 1000));
 }
 
+// ---------- schedule editing ----------
+// Starts are the source of truth; durations are DERIVED from consecutive starts (which is
+// exactly how scrape_devfest.py built the fixture -- the site publishes start times only).
+// So moving one start changes the two adjacent durations, and the back-time column follows.
+function recomputeFromStarts() {
+  const n = S.segments.length;
+  for (let i = 0; i < n; i++) {
+    const s = parseHHMM(S.segments[i].start);
+    const e = i + 1 < n ? parseHHMM(S.segments[i + 1].start) : S.hardEndSec;
+    S.segments[i].plannedSec = Math.max(60, e - s);   // never zero or negative
+    S.segments[i].end = fmtHHMM(s + S.segments[i].plannedSec);
+  }
+}
+
+// Returns null on success, or a reason string the caller can surface.
+function setStart(page, hhmm) {
+  const i = S.segments.findIndex(s => s.page === page);
+  if (i < 0) return 'no such row';
+  const norm = String(hhmm).trim()
+    .replace(/^(\d{1,2})[.\s]?(\d{2})$/, '$1:$2')      // 1005 / 10.05 -> 10:05
+    .replace(/^(\d):/, '0$1:');                         // 9:15 -> 09:15
+  const t = parseHHMM(norm);
+  if (!Number.isFinite(t)) return 'not a time';
+  const prev = i > 0 ? parseHHMM(S.segments[i - 1].start) : -Infinity;
+  const next = i + 1 < S.segments.length ? parseHHMM(S.segments[i + 1].start) : S.hardEndSec;
+  // A start must stay inside its neighbours, with a minute of room either side.
+  if (t <= prev) return `must be after ${fmtHHMM(prev)}`;
+  if (t >= next) return `must be before ${fmtHHMM(next)}`;
+  snapshot();                       // BACK undoes a schedule edit
+  S.segments[i].start = fmtHHMM(t);
+  recomputeFromStarts();
+  save();
+  return null;
+}
+
 // ---------- transport ----------
 const T = {
   start() {
@@ -107,6 +142,7 @@ const T = {
     seg.is_float = !seg.is_float;
     save();
   },
+  setStart(page, hhmm) { return setStart(page, hhmm); },
   reset() {
     S = loadState(FIXTURE);
     S.fixture = FIXTURE; S.history = []; S.clockOffsetSec = 0; S.editorPage = null;
@@ -173,7 +209,7 @@ function buildVM() {
   return {
     status: S.status,
     readout: idle
-      ? { text: '—', label: 'STANDBY', state: 'ONTIME' }
+      ? { text: '0:00', label: 'STANDBY', state: 'ONTIME' }
       : stopped
         ? { text: '0:00', label: 'STOPPED', state: 'ONTIME' }
         : { text: fmtSigned(d.deltaSec), label: d.state, state: d.state },

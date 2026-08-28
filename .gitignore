@@ -21,4 +21,4 @@ build/
 
 # --- test artifacts ---
 .playwright-mcp/
-backtime-live.png
+/*.png

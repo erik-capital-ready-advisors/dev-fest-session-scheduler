@@ -294,9 +294,14 @@ function render(vm) {
   el.btnPause.classList.toggle('is-armed', t.pause.armed);
 
   // rundown -----------------------------------------------------------------
-  const frag = document.createDocumentFragment();
-  for (const row of vm.rows) frag.appendChild(buildRow(row));
-  el.body.replaceChildren(frag);
+  // The engine repaints ~4x/second. Rebuilding the body while a START cell is being
+  // edited would rip the <input> out from under the cursor mid-keystroke, so the table
+  // holds still until the edit settles. Readout and clocks above keep ticking.
+  if (!inlineEditOpen) {
+    const frag = document.createDocumentFragment();
+    for (const row of vm.rows) frag.appendChild(buildRow(row));
+    el.body.replaceChildren(frag);
+  }
 
   // editor ------------------------------------------------------------------
   paintEditor(vm.editor);
@@ -343,7 +348,10 @@ function buildRow(row) {
   }
   tr.appendChild(dur);
 
-  tr.appendChild(cell('cell-num mono', row.start));
+  const startTd = cell('cell-num mono cell-start', row.start);
+  startTd.title = 'Double-click to change the start time';
+  startTd.ondblclick = () => beginStartEdit(startTd, row.page, row.start);
+  tr.appendChild(startTd);
   tr.appendChild(cell('cell-num mono', row.end));
   tr.appendChild(cell('cell-backtime mono', row.backtime));
 
@@ -361,6 +369,53 @@ function buildRow(row) {
   tr.appendChild(float);
 
   return tr;
+}
+
+/**
+ * Swap a START cell for an input. Enter commits, Esc cancels, blur commits.
+ * A rejected value keeps the input up with the reason in the tooltip, rather
+ * than silently snapping back to the old time.
+ */
+let inlineEditOpen = false;   // true while a START cell owns the keyboard
+
+function beginStartEdit(td, page, current) {
+  if (td.querySelector('input')) return;
+  inlineEditOpen = true;
+  const input = document.createElement('input');
+  input.className = 'start-input mono';
+  input.value = current;
+  input.setAttribute('aria-label', 'Start time for ' + page);
+  td.textContent = '';
+  td.appendChild(input);
+  input.focus();
+  input.select();
+
+  let settled = false;
+  const commit = () => {
+    if (settled) return;
+    // Claim the commit BEFORE calling in: a successful edit repaints, which detaches this
+    // input and fires blur -> commit() again. Without the up-front claim that second pass
+    // applies the edit twice and pushes two history entries, so BACK only undoes half of it.
+    settled = true;
+    inlineEditOpen = false;       // release the table before the repaint lands
+    const err = Backtime.setStart(page, input.value);
+    if (err) {
+      settled = false;            // rejected: stay in edit mode and let them retry
+      inlineEditOpen = true;
+      td.classList.add('cell-start-error');
+      input.title = err;
+      input.focus();
+    }
+  };
+  const cancel = () => { if (settled) return; settled = true; inlineEditOpen = false; render(currentVm); };
+
+  input.addEventListener('keydown', (e) => {
+    e.stopPropagation();          // keep Esc away from the editor-modal handler
+    if (e.key === 'Enter') { e.preventDefault(); commit(); }
+    else if (e.key === 'Escape') { e.preventDefault(); cancel(); }
+  });
+  input.addEventListener('input', () => td.classList.remove('cell-start-error'));
+  input.addEventListener('blur', commit);
 }
 
 function cell(className, text) {

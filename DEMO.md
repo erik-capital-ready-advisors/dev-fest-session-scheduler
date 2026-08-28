@@ -41,10 +41,26 @@ it — the real wall clock is the point.
 Past ~5 min of overage the solver correctly reaches for the 55-minute Lunch and the landing figure
 gets ugly (`−35:00`). Four minutes is the clean beat.
 
+## Changing a start time
+
+**Double-click any START cell**, type a new time, Enter. `1020`, `10:20` and `9:15` all parse.
+Esc cancels.
+
+Starts are the source of truth and **durations are derived from consecutive starts** — the same
+rule `scrape_devfest.py` used to build the fixture, because the site publishes start times only.
+So moving B1 from 10:00 to 10:10 stretches A1 from 45:00 to 55:00, shrinks B1 to 40:00, and the
+END and BACKTIME columns follow. Total planned time is conserved.
+
+A start that would cross its neighbours is refused, with the reason in the tooltip
+(*"must be after 09:15"*) and the field left open so you can correct it. Nothing is silently
+clamped. **BACK undoes a schedule edit.**
+
 ## Floating a row live
 
-**Click the FLOAT cell on any row to mark it droppable.** Click again to unmark. The chip is
-invisible until you hover the row, so the table stays clean.
+**Click the FLOAT cell on any row to mark it droppable.** Click again to unmark. A floated row
+turns **red across the whole line** — it is the thing that dies when you go heavy, and that
+should be readable from the back of the room. Unfloating removes the red. The chip itself stays
+invisible until you hover, so the table stays clean.
 
 This is the control that matters when the day goes badly. Out of the box only the breaks are
 floats — two turnarounds, lunch, and the buffer, 120 minutes total. When the overage is bigger

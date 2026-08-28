@@ -461,7 +461,11 @@ tr.is-done .cell-slug { color: var(--ink-faint); font-weight: 400; }
 tr.is-done .cell-backtime { color: var(--ink-faint); font-weight: 400; }
 
 /* float rows read as droppable across the whole row. */
-tr.is-float .cell-slug { color: var(--ink-dim); font-style: italic; }
+/* A floated row reads red across the whole line: it is the thing that dies when you
+   go heavy, and that should be obvious from across the room. */
+tr.is-float td { color: var(--float-red, #ff6b5e); }
+tr.is-float .cell-slug { color: var(--float-red, #ff6b5e); font-style: italic; }
+tr.is-float .chip-float { color: var(--float-red, #ff6b5e); border-color: var(--float-red, #ff6b5e); }
 
 /* the current row is unmissable. */
 tr.is-current td {
@@ -628,3 +632,20 @@ tr.is-current .cell-page::before {
 tr:hover .chip-float-off { opacity: .38; }
 .cell-float:hover .chip-float-off { opacity: .75; }
 .cell-float:hover .chip-float { filter: brightness(1.35); }
+
+/* --- editable start time ------------------------------------------------ */
+.cell-start { cursor: cell; }
+.cell-start:hover { text-decoration: underline dashed rgba(255, 255, 255, .35); text-underline-offset: 3px; }
+.start-input {
+  width: 6ch;
+  padding: 1px 3px;
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  color: #fff;
+  background: #10151c;
+  border: 1px solid #ffcf4a;
+  border-radius: 3px;
+  outline: none;
+  text-align: inherit;
+}
+.cell-start-error .start-input { border-color: #ff5b4a; background: #2a1210; }
