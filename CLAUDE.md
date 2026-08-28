@@ -73,6 +73,17 @@ paints ~4x/second and would otherwise tear the `<input>` out mid-keystroke. Cloc
 
 Do not wire `resetAll` to a button.
 
+## Hosting
+
+- **GitHub Pages (share this one): https://erik-capital-ready-advisors.github.io/dev-fest-session-scheduler/** — served from `main`, root, with `.nojekyll`.
+  Let's Encrypt on `github.io`, which passes filters that MITM `*.vercel.app`.
+- Vercel (`dev-fest-session-scheduler.vercel.app`) still works but multiple users hit
+  `ERR_CERT_AUTHORITY_INVALID` on networks that intercept TLS for new `vercel.app` subdomains.
+- `backtime-standalone.html` for anyone with no usable network at all.
+
+Pages serves the repo root, so a push to `main` redeploys. Rebuild before pushing:
+`node scripts/build.mjs`.
+
 ## Two build outputs
 
 `node scripts/build.mjs` writes both:

@@ -4,6 +4,14 @@
 files, `python3 -m http.server 8731` and open `http://127.0.0.1:8731/index.html` — but you should
 not need it.
 
+## Where it lives
+
+**https://erik-capital-ready-advisors.github.io/dev-fest-session-scheduler/**
+
+Served by GitHub Pages from `main`. Its certificate is Let's Encrypt on `github.io` — an
+old, universally categorised domain — which is why it gets through filters that intercept
+`*.vercel.app`. Use this link, not the Vercel one, for anyone else's machine.
+
 ## If someone cannot load the hosted URL
 
 Send them **`backtime-standalone.html`** — one file, CSS and JS inlined, no network,
