@@ -63,6 +63,16 @@ conserved. Out-of-range edits are refused with a reason, never clamped.
 The table does **not** repaint while a START cell is being edited (`inlineEditOpen`). The engine
 paints ~4x/second and would otherwise tear the `<input>` out mid-keystroke. Clocks keep ticking.
 
+## Two resets, and they are not interchangeable
+
+- **`resetRun()`** — the RESET button. Clears actuals and returns to standby, but KEEPS schedule
+  edits, float marks and edited descriptions. That is prep work; a producer resetting between
+  takes does not want it destroyed. Snapshotted, so BACK undoes it — hence no confirm dialog.
+- **`resetAll()`** — console only (`Backtime.reset()` is an alias). Reloads the scraped fixture and
+  discards everything.
+
+Do not wire `resetAll` to a button.
+
 ## Non-negotiables
 
 1. **Zero model calls on the critical path.** The scrape replaced paste-parse. If paste-parse comes

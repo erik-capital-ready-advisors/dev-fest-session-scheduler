@@ -512,11 +512,26 @@ const T = {
     save();
   },
   setStart(page, hhmm) { return setStart(page, hhmm); },
-  reset() {
+  // Reset the RUN: clear actuals and return to standby, but KEEP schedule edits,
+  // float marks and edited descriptions. Those are prep work; a producer resetting
+  // between rehearsals does not want them thrown away. Full wipe is T.resetAll().
+  resetRun() {
+    snapshot();                       // BACK undoes a reset, so no confirm dialog
+    for (const s of S.segments) { s.actualSec = null; s.done = false; }
+    S.currentIndex = 0;
+    S.status = 'idle';
+    S.segStartedMs = null;
+    S.pausedAccumMs = 0;
+    S.pausedAtMs = null;
+    S.editorPage = null;
+    save();
+  },
+  resetAll() {
     S = loadState(FIXTURE);
     S.fixture = FIXTURE; S.history = []; S.clockOffsetSec = 0; S.editorPage = null;
     save();
   },
+  reset() { T.resetAll(); },          // console alias; DEMO.md still says Backtime.reset()
 };
 
 // ---------- editor ----------
@@ -633,7 +648,9 @@ window.Backtime = {
   toggleFloat: page => { T.toggleFloat(page); paint(); },
   setStart: (page, hhmm) => { const err = setStart(page, hhmm); if (!err) paint(); return err; },
   state: () => S,
-  reset: () => { T.reset(); paint(); },
+  reset:    () => { T.resetAll(); paint(); },   // full wipe, back to the scraped fixture
+  resetAll: () => { T.resetAll(); paint(); },
+  resetRun: () => { T.resetRun(); paint(); },
   setClock: hhmm => { S.clockOffsetSec = parseHHMM(hhmm) - (nowSec() - S.clockOffsetSec); paint(); },
 };
 })();

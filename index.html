@@ -64,6 +64,7 @@
       <button class="btn"             id="btn-back"  type="button">BACK</button>
       <button class="btn"             id="btn-pause" type="button">PAUSE</button>
       <button class="btn btn-danger"  id="btn-stop"  type="button">STOP</button>
+      <button class="btn"             id="btn-reset" type="button">RESET</button>
     </div>
   </section>
 
@@ -233,7 +234,8 @@ const el = {
   btnNext: $('btn-next'),
   btnBack: $('btn-back'),
   btnPause: $('btn-pause'),
-  btnStop: $('btn-stop')
+  btnStop: $('btn-stop'),
+  btnReset: $('btn-reset')
 };
 
 /* Transport availability per status. Presentation only — the engine decides
@@ -241,10 +243,10 @@ const el = {
 const TRANSPORT = {
   // BACK stays live in idle: floats get marked during prep, before START, and a
   // mis-click there must be undoable. With an empty history it is a no-op.
-  idle:    { start:{show:true,  on:true },  next:{on:false}, back:{on:true }, stop:{on:false}, pause:{on:false, label:'PAUSE',  armed:false} },
-  running: { start:{show:false, on:false},  next:{on:true },  back:{on:true }, stop:{on:true }, pause:{on:true,  label:'PAUSE',  armed:false} },
-  paused:  { start:{show:false, on:false},  next:{on:false}, back:{on:true }, stop:{on:true }, pause:{on:true,  label:'RESUME', armed:true } },
-  stopped: { start:{show:true,  on:true },  next:{on:false}, back:{on:true }, stop:{on:false}, pause:{on:false, label:'PAUSE',  armed:false} }
+  idle:    { start:{show:true,  on:true },  next:{on:false}, back:{on:true }, stop:{on:false}, pause:{on:false, label:'PAUSE',  armed:false}, reset:{on:true} },
+  running: { start:{show:false, on:false},  next:{on:true },  back:{on:true }, stop:{on:true }, pause:{on:true,  label:'PAUSE',  armed:false}, reset:{on:true} },
+  paused:  { start:{show:false, on:false},  next:{on:false}, back:{on:true }, stop:{on:true }, pause:{on:true,  label:'RESUME', armed:true }, reset:{on:true} },
+  stopped: { start:{show:true,  on:true },  next:{on:false}, back:{on:true }, stop:{on:false}, pause:{on:false, label:'PAUSE',  armed:false}, reset:{on:true} }
 };
 
 /* ---------------------------------------------------------------- render -- */
@@ -292,6 +294,7 @@ function render(vm) {
   el.btnPause.disabled = !t.pause.on;
   el.btnPause.textContent = t.pause.label;
   el.btnPause.classList.toggle('is-armed', t.pause.armed);
+  el.btnReset.disabled = !(t.reset && t.reset.on);
 
   // rundown -----------------------------------------------------------------
   // The engine repaints ~4x/second. Rebuilding the body while a START cell is being
@@ -445,6 +448,9 @@ function onNext()  { Backtime.transport.next();  }
 function onBack()  { Backtime.transport.back();  }   // subsumes UNDO
 function onPause() { Backtime.transport.pause(); }   // toggles pause/resume
 function onStop()  { Backtime.transport.stop();  }
+// Clears actuals and returns to standby. Keeps schedule edits, floats and
+// descriptions -- and BACK undoes it, so it needs no confirm dialog.
+function onReset() { Backtime.resetRun(); }
 
 /** STUB: opens the slug editor for `page`. Engine supplies vm.editor. */
 function openEditor(page) {
@@ -466,6 +472,7 @@ el.btnNext .addEventListener('click', onNext);
 el.btnBack .addEventListener('click', onBack);
 el.btnPause.addEventListener('click', onPause);
 el.btnStop .addEventListener('click', onStop);
+el.btnReset.addEventListener('click', onReset);
 
 $('btn-editor-cancel').addEventListener('click', () => closeEditor());
 $('btn-editor-save').addEventListener('click', () => saveEditor(el.editorText.value));

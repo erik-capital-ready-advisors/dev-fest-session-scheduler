@@ -9,7 +9,7 @@ not need it.
 Open the browser console and run:
 
 ```js
-Backtime.reset()            // clears localStorage, back to a clean rundown
+Backtime.reset()            // full wipe, back to the scraped fixture
 Backtime.setClock('09:15')  // put the clock at the top of the show
 ```
 
@@ -75,6 +75,17 @@ Cuts are named by page code and short slug — `Drop B3 "Turnaround"` — the wa
 names a segment, not by reciting its full title.
 
 The segment currently on air is never offered as a cut. You cannot drop what is already playing.
+
+## RESET
+
+**RESET clears the run and returns to standby** — actuals wiped, back to A1, readout `0:00`.
+
+It deliberately **keeps your prep**: retimed starts, float marks, and edited descriptions all
+survive. Resetting between rehearsal takes should not throw away the schedule you just built.
+**BACK undoes a RESET**, which is why there is no confirm dialog to fumble on stage.
+
+To wipe everything back to the scraped fixture, use the console: `Backtime.resetAll()`
+(or `Backtime.reset()`, the same thing).
 
 ## If something goes wrong on stage
 

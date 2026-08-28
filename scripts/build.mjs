@@ -23,7 +23,9 @@ window.Backtime = {
   toggleFloat: page => { T.toggleFloat(page); paint(); },
   setStart: (page, hhmm) => { const err = setStart(page, hhmm); if (!err) paint(); return err; },
   state: () => S,
-  reset: () => { T.reset(); paint(); },
+  reset:    () => { T.resetAll(); paint(); },   // full wipe, back to the scraped fixture
+  resetAll: () => { T.resetAll(); paint(); },
+  resetRun: () => { T.resetRun(); paint(); },
   setClock: hhmm => { S.clockOffsetSec = parseHHMM(hhmm) - (nowSec() - S.clockOffsetSec); paint(); },
 };
 })();
