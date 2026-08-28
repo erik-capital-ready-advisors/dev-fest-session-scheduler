@@ -4,6 +4,21 @@
 files, `python3 -m http.server 8731` and open `http://127.0.0.1:8731/index.html` — but you should
 not need it.
 
+## If someone cannot load the hosted URL
+
+Send them **`backtime-standalone.html`** — one file, CSS and JS inlined, no network,
+no server, no sibling files. They double-click it and it works. AirDrop, email, USB stick.
+
+Venue and corporate firewalls routinely intercept TLS for `*.vercel.app` (it is a common
+phishing host, so filters treat new subdomains as suspect). The browser reports
+`ERR_CERT_AUTHORITY_INVALID`. Nothing is wrong with the deployment and there is no
+server-side fix — the standalone file sidesteps it entirely.
+
+To confirm that is what is happening: click through the error and view the certificate.
+If the issuer is not *Google Trust Services*, the network is intercepting.
+
+Regenerate the file after any change with `node scripts/build.mjs`.
+
 ## Before you present (30 seconds, do it every time)
 
 Open the browser console and run:

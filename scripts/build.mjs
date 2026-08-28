@@ -30,4 +30,20 @@ window.Backtime = {
 };
 })();
 `);
+// --- standalone single-file build -------------------------------------------
+// One HTML file with the CSS and JS inlined. Hand this to anyone who cannot reach
+// the hosted URL -- venue and corporate firewalls routinely intercept *.vercel.app
+// and the browser reports ERR_CERT_AUTHORITY_INVALID. This file needs no network,
+// no server and no sibling files: AirDrop it, email it, put it on a stick.
+const html = readFileSync('index.html', 'utf8');
+const css = readFileSync('app.css', 'utf8');
+const js = readFileSync('bundle.js', 'utf8');
+const standalone = html
+  .replace('<link rel="stylesheet" href="app.css">', `<style>\n${css}\n</style>`)
+  .replace('<script src="bundle.js"></script>', `<script>\n${js}\n</script>`);
+if (standalone.includes('href="app.css"') || standalone.includes('src="bundle.js"'))
+  throw new Error('standalone build still references external assets');
+writeFileSync('backtime-standalone.html', standalone);
+
 console.log('bundle.js written');
+console.log(`backtime-standalone.html written (${(standalone.length / 1024).toFixed(0)}KB, no external refs)`);

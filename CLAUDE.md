@@ -73,6 +73,18 @@ paints ~4x/second and would otherwise tear the `<input>` out mid-keystroke. Cloc
 
 Do not wire `resetAll` to a button.
 
+## Two build outputs
+
+`node scripts/build.mjs` writes both:
+
+- **`bundle.js`** — for `index.html`, the normal build.
+- **`backtime-standalone.html`** — one file with CSS and JS inlined, for anyone who cannot
+  reach the hosted URL. Firewalls commonly intercept TLS for `*.vercel.app`, producing
+  `ERR_CERT_AUTHORITY_INVALID` on machines whose trust store lacks the interceptor's root.
+  The build fails loudly if the standalone still references an external asset.
+
+Regenerate both after any change to `index.html`, `app.css`, `app.js` or `lib/timing.js`.
+
 ## Non-negotiables
 
 1. **Zero model calls on the critical path.** The scrape replaced paste-parse. If paste-parse comes

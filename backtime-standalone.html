@@ -1,0 +1,1825 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Backtime — Live</title>
+<!-- Favicon inlined as a data URI: the app runs from file://, so it must not
+     depend on a sibling file resolving. Source lives in favicon.svg. -->
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22> <rect width=%2232%22 height=%2232%22 rx=%227%22 fill=%22%230d1117%22/> <g stroke=%22%239aa6b6%22 stroke-width=%221.9%22 stroke-linecap=%22round%22 fill=%22none%22> <path d=%22M16 11 L10.5 5%22/><path d=%22M16 11 L21.5 5%22/> </g> <rect x=%223.5%22 y=%2210.5%22 width=%2225%22 height=%2216.5%22 rx=%223%22 fill=%22%23dde5ee%22/> <rect x=%225.6%22 y=%2212.6%22 width=%2216.2%22 height=%2212.3%22 rx=%221.6%22 fill=%22%23ffcf4a%22/> <circle cx=%2225.1%22 cy=%2215.6%22 r=%221.35%22 fill=%22%235f6b7c%22/> <circle cx=%2225.1%22 cy=%2219.6%22 r=%221.35%22 fill=%22%235f6b7c%22/> <rect x=%2223.9%22 y=%2222.4%22 width=%222.4%22 height=%221.5%22 rx=%220.7%22 fill=%22%235f6b7c%22/> </svg>">
+<style>
+/* ==========================================================================
+   Backtime — presentation layer only.
+   No timing logic lives in this project's CSS or in index.html; every number
+   on screen arrives pre-formatted in the view model.
+   ========================================================================== */
+
+:root {
+  --bg:        #07090d;
+  --panel:     #0e1219;
+  --panel-2:   #141a23;
+  --line:      #212936;
+  --line-soft: #1a212c;
+
+  --ink:       #e8eef6;
+  --ink-dim:   #99a4b3;
+  --ink-faint: #5d6775;
+
+  --heavy:     #ff5b3c;
+  --heavy-dim: #f7856d;
+  --light:     #4cb2ff;
+  --light-dim: #8fcdff;
+  --ontime:    #dfe7f1;
+
+  --over:      #ff6a51;
+  --under:     #37d99a;
+
+  --current:   #ffcf4a;
+  --focus:     #6fa8ff;
+
+  --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Monaco,
+          "Cascadia Mono", "Roboto Mono", Consolas, monospace;
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto,
+          Helvetica, Arial, sans-serif;
+
+  --gutter: clamp(14px, 1.6vw, 28px);
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+/* Every digit on screen is tabular so nothing jitters as it ticks. */
+.num, .mono, table, .clock-value, .readout-value {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1, "zero" 1;
+}
+
+/* ---------------------------------------------------------------- shell -- */
+
+.app {
+  height: 100vh;
+  display: grid;
+  grid-template-rows: auto auto 1fr;
+  min-height: 0;
+}
+
+/* --------------------------------------------------------------- header -- */
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 10px var(--gutter);
+  border-bottom: 1px solid var(--line);
+  background: var(--panel);
+}
+
+.brand {
+  font-family: var(--mono);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.34em;
+  color: var(--ink-dim);
+}
+
+.status-pill {
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  padding: 4px 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--ink-dim);
+  background: var(--panel-2);
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.status-pill::before {
+  content: "";
+  width: 9px; height: 9px;
+  border-radius: 50%;
+  background: var(--ink-faint);
+}
+
+.status-pill[data-status="running"] { color: var(--under); border-color: #1f5f47; }
+.status-pill[data-status="running"]::before { background: var(--under); }
+.status-pill[data-status="paused"]  { color: var(--current); border-color: #5c4a12; }
+.status-pill[data-status="paused"]::before  { background: var(--current); }
+.status-pill[data-status="stopped"] { color: var(--heavy); border-color: #5c2a1e; }
+.status-pill[data-status="stopped"]::before { background: var(--heavy); }
+
+.topbar-spacer { flex: 1; }
+
+.hard-end {
+  font-family: var(--mono);
+  font-size: 14px;
+  letter-spacing: 0.14em;
+  color: var(--ink-faint);
+}
+.hard-end b {
+  color: var(--ink);
+  font-weight: 700;
+  margin-left: 8px;
+  letter-spacing: 0.06em;
+}
+
+/* ---------------------------------------------------------------- stage -- */
+
+.stage {
+  padding: clamp(10px, 1.4vh, 22px) var(--gutter) clamp(12px, 1.6vh, 20px);
+  border-bottom: 1px solid var(--line);
+  background:
+    radial-gradient(120% 180% at 12% 0%, #10151d 0%, var(--bg) 62%);
+}
+
+.stage-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: clamp(16px, 3vw, 56px);
+  align-items: end;
+}
+
+/* -------------------------------------------------------------- readout -- */
+
+.readout-label-row {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 2px;
+}
+
+.eyebrow {
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.32em;
+  color: var(--ink-faint);
+}
+
+.readout {
+  display: flex;
+  align-items: baseline;
+  gap: clamp(12px, 2vw, 34px);
+  line-height: 0.86;
+}
+
+.readout-value {
+  font-size: clamp(72px, 13.5vw, 190px);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 0.86;
+}
+
+.readout-state {
+  font-family: var(--mono);
+  font-size: clamp(20px, 3.1vw, 46px);
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  padding-bottom: clamp(4px, 0.9vw, 14px);
+  white-space: nowrap;
+}
+
+.readout[data-state="HEAVY"]  .readout-value,
+.readout[data-state="HEAVY"]  .readout-state  { color: var(--heavy); }
+.readout[data-state="LIGHT"]  .readout-value,
+.readout[data-state="LIGHT"]  .readout-state  { color: var(--light); }
+.readout[data-state="ONTIME"] .readout-value,
+.readout[data-state="ONTIME"] .readout-state  { color: var(--ontime); }
+
+.readout[data-state="HEAVY"] .readout-value  { text-shadow: 0 0 60px rgba(255, 91, 60, 0.28); }
+.readout[data-state="LIGHT"] .readout-value  { text-shadow: 0 0 60px rgba(76, 178, 255, 0.24); }
+
+/* ------------------------------------------------------- recommendation -- */
+
+.recommendation {
+  margin-top: clamp(8px, 1.2vh, 16px);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 11px 18px;
+  border-left: 5px solid var(--heavy);
+  background: rgba(255, 91, 60, 0.08);
+  border-radius: 3px;
+  max-width: 100%;
+}
+
+.recommendation[hidden] { display: none; }
+
+.recommendation-tag {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  color: var(--heavy);
+  flex: none;
+}
+
+.recommendation-text {
+  font-size: clamp(17px, 1.7vw, 27px);
+  font-weight: 600;
+  color: var(--ink);
+  letter-spacing: -0.005em;
+}
+
+/* covers:false — the cut does not close the gap. Loud, and unmistakably not a plan. */
+.recommendation.is-warning {
+  border-left-color: var(--current);
+  background: rgba(255, 207, 74, 0.1);
+}
+.recommendation.is-warning .recommendation-tag { color: var(--current); }
+.recommendation.is-warning .recommendation-text { color: var(--current); }
+
+/* --------------------------------------------------------------- clocks -- */
+
+.clocks {
+  display: flex;
+  gap: clamp(14px, 2vw, 34px);
+}
+
+.clock {
+  min-width: clamp(150px, 15vw, 260px);
+  padding: 10px 16px 8px;
+  border: 1px solid var(--line);
+  border-top: 3px solid var(--line);
+  border-radius: 4px;
+  background: var(--panel);
+}
+
+.clock-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 2px;
+}
+
+.clock-name {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.26em;
+  color: var(--ink-faint);
+}
+
+.clock-flag {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: var(--over);
+  border: 1px solid var(--over);
+  border-radius: 2px;
+  padding: 1px 5px;
+}
+.clock-flag[hidden] { display: none; }
+
+.clock-value {
+  font-size: clamp(30px, 4.4vw, 62px);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.02;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+/* Negative = over. The clock never freezes at zero; it goes red and keeps counting. */
+.clock.is-negative { border-top-color: var(--over); background: rgba(255, 106, 81, 0.07); }
+.clock.is-negative .clock-value { color: var(--over); }
+.clock.is-negative .clock-name  { color: var(--heavy-dim); }
+
+/* ------------------------------------------------------------ transport -- */
+
+.transport {
+  margin-top: clamp(10px, 1.4vh, 18px);
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+}
+
+.btn {
+  font-family: var(--mono);
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: var(--ink);
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 14px 22px;
+  min-width: 120px;
+  cursor: pointer;
+  transition: background 90ms linear, border-color 90ms linear;
+}
+
+.btn:hover:not(:disabled) { background: #1d2531; border-color: #33404f; }
+.btn:active:not(:disabled) { transform: translateY(1px); }
+.btn:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+
+.btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.btn[hidden] { display: none; }
+
+/* NEXT is the only control touched while running. It dominates the bar. */
+.btn-primary {
+  flex: 1;
+  font-size: clamp(20px, 2.3vw, 32px);
+  letter-spacing: 0.26em;
+  padding: 16px 28px;
+  color: #06131f;
+  background: linear-gradient(180deg, #7fd0ff 0%, #33a6f5 100%);
+  border-color: #62bdf3;
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.4), 0 10px 30px -12px rgba(51, 166, 245, 0.7);
+}
+.btn-primary:hover:not(:disabled) {
+  background: linear-gradient(180deg, #9adcff 0%, #48b3ff 100%);
+  border-color: #8ed3ff;
+}
+.btn-primary:disabled { box-shadow: none; }
+
+.btn-danger { color: var(--heavy-dim); border-color: #40241d; }
+.btn-danger:hover:not(:disabled) { background: #2a1712; border-color: #6b3527; }
+
+.btn-go { color: var(--under); border-color: #1c4b3a; }
+.btn-go:hover:not(:disabled) { background: #10261e; border-color: #2c7a5e; }
+
+.btn.is-armed { color: var(--current); border-color: #5c4a12; background: #241d07; }
+
+/* -------------------------------------------------------------- rundown -- */
+
+.rundown {
+  min-height: 0;
+  overflow: auto;
+  padding: 0 var(--gutter) var(--gutter);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: clamp(13px, 1.05vw, 17px);
+}
+
+thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  text-align: left;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.24em;
+  color: var(--ink-faint);
+  background: var(--bg);
+  padding: 12px 14px 9px;
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+
+tbody td {
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--line-soft);
+  white-space: nowrap;
+  color: var(--ink-dim);
+}
+
+.col-page     { width: 68px; }
+.col-slug     { width: auto; min-width: 220px; }
+.col-speaker  { width: 20%; max-width: 0; }
+.col-dur      { width: 148px; }
+.col-time     { width: 96px; }
+.col-backtime { width: 118px; }
+.col-float    { width: 104px; }
+
+.cell-page {
+  color: var(--ink-faint);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  position: relative;
+  padding-left: 26px;
+}
+
+.cell-slug, .cell-speaker {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 0;
+}
+
+.cell-slug { color: var(--ink); font-weight: 500; }
+
+.cell-dur { display: flex; gap: 10px; align-items: baseline; justify-content: space-between; }
+
+.cell-num { text-align: left; }
+
+.cell-backtime { color: var(--ink); font-weight: 700; }
+
+/* The slug cell is the only editable cell in the rundown. */
+.slug-target {
+  cursor: text;
+  border-bottom: 1px dashed rgba(153, 164, 179, 0.3);
+  padding-bottom: 1px;
+}
+tbody tr:hover .slug-target { border-bottom-color: var(--focus); color: #fff; }
+
+/* float chip — reads as droppable: dashed, dimmer, never solid. */
+.chip-float {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: var(--ink-faint);
+  border: 1px dashed #48525f;
+  border-radius: 2px;
+  padding: 2px 8px;
+  background: repeating-linear-gradient(
+    -45deg, transparent 0 5px, rgba(153, 164, 179, 0.05) 5px 10px);
+}
+
+.chip-var {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 1px 7px;
+  border-radius: 2px;
+}
+.chip-var.is-over  { color: var(--over);  background: rgba(255, 106, 81, 0.14); }
+.chip-var.is-under { color: var(--under); background: rgba(55, 217, 154, 0.13); }
+
+/* done rows recede — they are history, not the decision. */
+tr.is-done td { color: var(--ink-faint); opacity: 0.62; }
+tr.is-done .cell-slug { color: var(--ink-faint); font-weight: 400; }
+tr.is-done .cell-backtime { color: var(--ink-faint); font-weight: 400; }
+
+/* float rows read as droppable across the whole row. */
+/* A floated row reads red across the whole line: it is the thing that dies when you
+   go heavy, and that should be obvious from across the room. */
+tr.is-float td { color: var(--float-red, #ff6b5e); }
+tr.is-float .cell-slug { color: var(--float-red, #ff6b5e); font-style: italic; }
+tr.is-float .chip-float { color: var(--float-red, #ff6b5e); border-color: var(--float-red, #ff6b5e); }
+
+/* the current row is unmissable. */
+tr.is-current td {
+  background: rgba(255, 207, 74, 0.13);
+  border-bottom: 1px solid #6b560f;
+  border-top: 1px solid #6b560f;
+  color: var(--ink);
+  opacity: 1;
+  padding-top: 13px;
+  padding-bottom: 13px;
+}
+tr.is-current td:first-child { box-shadow: inset 5px 0 0 var(--current); }
+tr.is-current .cell-slug {
+  color: #fff;
+  font-weight: 700;
+  font-style: normal;
+  font-size: 1.08em;
+}
+tr.is-current .cell-page { color: var(--current); }
+tr.is-current .cell-backtime { color: var(--current); }
+tr.is-current .cell-page::before {
+  content: "\25B6";
+  position: absolute;
+  left: 8px;
+  color: var(--current);
+  font-size: 0.85em;
+}
+
+/* --------------------------------------------------------------- editor -- */
+
+.editor-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5vh 4vw;
+  background: rgba(3, 5, 8, 0.78);
+}
+.editor-backdrop[hidden] { display: none; }
+
+.editor {
+  width: min(940px, 100%);
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--panel);
+  border: 1px solid #2c3644;
+  border-radius: 6px;
+  box-shadow: 0 40px 100px -20px rgba(0,0,0,0.9);
+}
+
+.editor-head {
+  padding: 18px 24px 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.editor-page {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.26em;
+  color: var(--ink-faint);
+}
+
+.editor-title {
+  margin: 6px 0 0;
+  font-size: clamp(20px, 2.2vw, 30px);
+  font-weight: 700;
+  line-height: 1.15;
+  color: var(--ink);
+}
+
+.editor-body {
+  padding: 18px 24px;
+  overflow: auto;
+  min-height: 0;
+}
+
+.field-label {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.24em;
+  color: var(--ink-faint);
+  margin-bottom: 8px;
+}
+
+#editor-text {
+  display: block;
+  width: 100%;
+  min-height: 190px;
+  resize: vertical;
+  font-family: var(--sans);
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--ink);
+  background: #080b10;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 14px 16px;
+}
+#editor-text:focus { outline: 2px solid var(--focus); outline-offset: 1px; }
+
+.editor-bio {
+  margin-top: 20px;
+  padding: 14px 16px;
+  border-left: 3px solid var(--line);
+  background: var(--panel-2);
+  border-radius: 0 3px 3px 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--ink-dim);
+  max-height: 22vh;
+  overflow: auto;
+}
+
+.editor-foot {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 13px 24px;
+  border-top: 1px solid var(--line);
+}
+
+.shortcut-hint {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  letter-spacing: 0.06em;
+  color: var(--ink-faint);
+}
+.shortcut-hint kbd {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--ink);
+  background: #1b222d;
+  border: 1px solid #303a49;
+  border-bottom-width: 2px;
+  border-radius: 3px;
+  padding: 1px 6px;
+  margin: 0 2px;
+}
+
+.editor-foot-spacer { flex: 1; }
+.editor-foot .btn { min-width: 108px; padding: 10px 18px; font-size: 14px; }
+
+/* --------------------------------------------------------------- narrow -- */
+
+@media (max-width: 1080px) {
+  .stage-top { grid-template-columns: 1fr; align-items: start; }
+  .clocks { justify-content: flex-start; }
+  .col-speaker, .cell-speaker { display: none; }
+}
+
+/* --- live float toggle -------------------------------------------------- */
+.cell-float { cursor: pointer; user-select: none; }
+.chip-float-off {
+  opacity: 0;
+  border-style: dashed;
+  background: none;
+  transition: opacity .12s ease;
+}
+tr:hover .chip-float-off { opacity: .38; }
+.cell-float:hover .chip-float-off { opacity: .75; }
+.cell-float:hover .chip-float { filter: brightness(1.35); }
+
+/* --- editable start time ------------------------------------------------ */
+.cell-start { cursor: cell; }
+.cell-start:hover { text-decoration: underline dashed rgba(255, 255, 255, .35); text-underline-offset: 3px; }
+.start-input {
+  width: 6ch;
+  padding: 1px 3px;
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  color: #fff;
+  background: #10151c;
+  border: 1px solid #ffcf4a;
+  border-radius: 3px;
+  outline: none;
+  text-align: inherit;
+}
+.cell-start-error .start-input { border-color: #ff5b4a; background: #2a1210; }
+
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ------------------------------------------------------------ header -->
+  <header class="topbar">
+    <span class="brand">BACKTIME</span>
+    <span class="status-pill" id="status-pill" data-status="idle">IDLE</span>
+    <span class="topbar-spacer"></span>
+    <span class="hard-end">HARD END<b>17:00</b></span>
+  </header>
+
+  <!-- ------------------------------------------------------------- stage -->
+  <section class="stage">
+    <div class="stage-top">
+
+      <!-- the number a producer reads from across the room -->
+      <div class="readout-block">
+        <div class="readout-label-row"><span class="eyebrow">HEAVY / LIGHT</span></div>
+        <div class="readout" id="readout" data-state="ONTIME">
+          <span class="readout-value" id="readout-value">0:00</span>
+          <span class="readout-state" id="readout-state">ON TIME</span>
+        </div>
+      </div>
+
+      <!-- two clocks; negative means over, and they never stop at zero -->
+      <div class="clocks">
+        <div class="clock" id="clock-conference">
+          <div class="clock-head">
+            <span class="clock-name">CONFERENCE</span>
+            <span class="clock-flag" id="clock-conference-flag" hidden>OVER</span>
+          </div>
+          <div class="clock-value" id="clock-conference-value">0:00:00</div>
+        </div>
+        <div class="clock" id="clock-segment">
+          <div class="clock-head">
+            <span class="clock-name">SEGMENT</span>
+            <span class="clock-flag" id="clock-segment-flag" hidden>OVER</span>
+          </div>
+          <div class="clock-value" id="clock-segment-value">0:00</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- only rendered when vm.recommendation is non-null -->
+    <div class="recommendation" id="recommendation" hidden>
+      <span class="recommendation-tag" id="recommendation-tag">CUT</span>
+      <span class="recommendation-text" id="recommendation-text"></span>
+    </div>
+
+    <!-- transport: NEXT is the only control touched while running -->
+    <div class="transport">
+      <button class="btn btn-go"      id="btn-start" type="button">START</button>
+      <button class="btn btn-primary" id="btn-next"  type="button">NEXT</button>
+      <button class="btn"             id="btn-back"  type="button">BACK</button>
+      <button class="btn"             id="btn-pause" type="button">PAUSE</button>
+      <button class="btn btn-danger"  id="btn-stop"  type="button">STOP</button>
+      <button class="btn"             id="btn-reset" type="button">RESET</button>
+    </div>
+  </section>
+
+  <!-- ----------------------------------------------------------- rundown -->
+  <section class="rundown">
+    <table>
+      <colgroup>
+        <col class="col-page"><col class="col-slug"><col class="col-speaker">
+        <col class="col-dur"><col class="col-time"><col class="col-time">
+        <col class="col-backtime"><col class="col-float">
+      </colgroup>
+      <thead>
+        <tr>
+          <th class="col-page">PAGE</th>
+          <th class="col-slug">SLUG</th>
+          <th class="col-speaker">SPEAKER</th>
+          <th class="col-dur">DUR</th>
+          <th class="col-time">START</th>
+          <th class="col-time">END</th>
+          <th class="col-backtime">BACKTIME</th>
+          <th class="col-float">FLOAT</th>
+        </tr>
+      </thead>
+      <tbody id="rundown-body"></tbody>
+    </table>
+  </section>
+
+</div>
+
+<!-- ---------------------------------------------------------- slug editor -->
+<div class="editor-backdrop" id="editor-backdrop" hidden>
+  <div class="editor" role="dialog" aria-modal="true" aria-labelledby="editor-title">
+    <div class="editor-head">
+      <div class="editor-page" id="editor-page">A1</div>
+      <h2 class="editor-title" id="editor-title"></h2>
+    </div>
+    <div class="editor-body">
+      <div class="field-label">DESCRIPTION</div>
+      <textarea id="editor-text" spellcheck="false"></textarea>
+      <div class="field-label" style="margin-top:20px">SPEAKER BIO &mdash; READ ONLY</div>
+      <div class="editor-bio" id="editor-bio"></div>
+    </div>
+    <div class="editor-foot">
+      <span class="shortcut-hint"><kbd>Esc</kbd> close &nbsp;&middot;&nbsp; <kbd>&#8984;</kbd><kbd>&#9166;</kbd> save</span>
+      <span class="editor-foot-spacer"></span>
+      <button class="btn" id="btn-editor-cancel" type="button">CANCEL</button>
+      <button class="btn btn-go" id="btn-editor-save" type="button">SAVE</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// GENERATED by scripts/build.mjs — do not edit. Edit lib/timing.js or app.js.
+(function () {
+'use strict';
+// Backtime — the arithmetic. Pure ES module: no DOM, no imports, no mutation of inputs.
+//
+// Conventions:
+//   - every wall-clock value is seconds since midnight (int)
+//   - every duration is seconds (int)
+//   - durations may be NEGATIVE (a segment running past its planned length). Never clamp them:
+//     the negative number is the whole point of a back-timed rundown.
+
+const DAY = 86400;
+
+// ---------------------------------------------------------------------------
+// Formatting
+// ---------------------------------------------------------------------------
+
+/** "17:00" -> 61200. Also accepts "9:15" and "17:00:30". */
+function parseHHMM(s) {
+  const m = /^(\d{1,2}):(\d{2})(?::(\d{2}))?$/.exec(String(s).trim());
+  if (!m) throw new Error(`parseHHMM: cannot parse ${JSON.stringify(s)}`);
+  const [h, mi, se] = [Number(m[1]), Number(m[2]), Number(m[3] ?? 0)];
+  if (h > 23 || mi > 59 || se > 59) throw new Error(`parseHHMM: out of range ${s}`);
+  return h * 3600 + mi * 60 + se;
+}
+
+/** 61200 -> "17:00". 24h, zero-padded, wraps across midnight. */
+function fmtHHMM(sec) {
+  const t = ((Math.floor(sec) % DAY) + DAY) % DAY;
+  const h = Math.floor(t / 3600);
+  const mi = Math.floor((t % 3600) / 60);
+  return `${String(h).padStart(2, '0')}:${String(mi).padStart(2, '0')}`;
+}
+
+/** 3620 -> "1:00:20"; 125 -> "2:05". Magnitude only, no sign. */
+function fmtDur(sec) {
+  const t = Math.abs(Math.trunc(sec));
+  const h = Math.floor(t / 3600);
+  const mi = Math.floor((t % 3600) / 60);
+  const se = t % 60;
+  const pad = (n) => String(n).padStart(2, '0');
+  return h > 0 ? `${h}:${pad(mi)}:${pad(se)}` : `${mi}:${pad(se)}`;
+}
+
+/** 125 -> "+2:05"; -125 -> "-2:05"; 0 -> "0:00". */
+function fmtSigned(sec) {
+  const t = Math.trunc(sec);
+  if (t === 0) return '0:00';
+  return (t > 0 ? '+' : '-') + fmtDur(t);
+}
+
+// ---------------------------------------------------------------------------
+// Back-time
+// ---------------------------------------------------------------------------
+
+/**
+ * backtime(i) = hardEndSec - sum(plannedSec[j] for j >= i)
+ * -> number[] parallel to segments (seconds since midnight).
+ */
+function backtimes(segments, hardEndSec) {
+  const out = new Array(segments.length);
+  let suffix = 0;
+  for (let i = segments.length - 1; i >= 0; i--) {
+    suffix += segments[i].plannedSec;
+    out[i] = hardEndSec - suffix;
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------
+// Heavy / light
+// ---------------------------------------------------------------------------
+
+const ONTIME_BAND_SEC = 30;
+
+/**
+ * state: { segments: [{...fixture fields, plannedSec, actualSec|null, done}],
+ *          hardEndSec, currentIndex, status, segmentElapsedSec }
+ *
+ * remaining = (plannedSec[current] - segmentElapsedSec) + sum(plannedSec[j] for j > current)
+ *
+ * Completed segments (index < currentIndex) contribute their ACTUAL, never their planned — they
+ * do it through `nowSec`, which has already advanced by however long they really took. That is
+ * why the readout moves: a segment that ran 2 minutes long pushed `now` 2 minutes further along
+ * while removing only its planned 2 minutes from `remaining`.
+ *
+ * -> { remainingSec, projectedEndSec, deltaSec, state:'HEAVY'|'LIGHT'|'ONTIME' }
+ */
+function computeDelta(state, nowSec) {
+  const { segments, currentIndex, hardEndSec, segmentElapsedSec } = state;
+  let remainingSec = 0;
+  if (currentIndex < segments.length) {
+    // Clamp at zero. Unclamped, `plannedSec - elapsed` goes negative at exactly the
+    // rate the wall clock advances, so the delta cancels to a constant and the readout
+    // never moves while a segment runs long. Clamped, the overrun accumulates second by
+    // second — which is the number a producer is actually watching. It also makes the
+    // readout CONTINUOUS across NEXT: banking the actual no longer jumps it.
+    remainingSec = Math.max(0, segments[currentIndex].plannedSec - segmentElapsedSec);
+    for (let j = currentIndex + 1; j < segments.length; j++) remainingSec += segments[j].plannedSec;
+  }
+  const projectedEndSec = nowSec + remainingSec;
+  const deltaSec = projectedEndSec - hardEndSec;
+  return {
+    remainingSec,
+    projectedEndSec,
+    deltaSec,
+    state: deltaSec > ONTIME_BAND_SEC ? 'HEAVY' : deltaSec < -ONTIME_BAND_SEC ? 'LIGHT' : 'ONTIME',
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Float solver
+// ---------------------------------------------------------------------------
+
+const EXACT_MAX_N = 18;
+
+/**
+ * Pick the subset of remaining float segments that covers `deltaSec` with the LEAST OVERSHOOT;
+ * among equally good options, the one that cuts the FEWEST SEGMENTS (a producer cuts one thing,
+ * not three).
+ *
+ * -> { cuts:[segment], totalCutSec, landingSec, covers, shortfallSec, exact }
+ *    landingSec = deltaSec - totalCutSec   (negative = lands early)
+ *    If nothing covers the overage: covers:false, cuts = ALL remaining floats, shortfallSec > 0.
+ *    Never reports a cut that does not close the gap.
+ */
+function solveFloats(remainingFloatSegments, deltaSec) {
+  const floats = remainingFloatSegments;
+  const n = floats.length;
+  const total = floats.reduce((a, s) => a + s.plannedSec, 0);
+  const exact = n <= EXACT_MAX_N;
+
+  // Nothing on the table can close the gap: name every float and the shortfall, honestly.
+  if (total < deltaSec) return result(floats, total, deltaSec, exact);
+
+  let best = null; // { mask|list, sum, count }
+  if (exact) {
+    for (let mask = 0; mask < 1 << n; mask++) {
+      let sum = 0;
+      let count = 0;
+      for (let i = 0; i < n; i++) {
+        if (mask & (1 << i)) {
+          sum += floats[i].plannedSec;
+          count++;
+        }
+      }
+      if (sum < deltaSec) continue;
+      const overshoot = sum - deltaSec;
+      if (
+        best === null ||
+        overshoot < best.sum - deltaSec ||
+        (overshoot === best.sum - deltaSec && count < best.count)
+      ) {
+        best = { mask, sum, count };
+      }
+    }
+    const cuts = floats.filter((_, i) => best.mask & (1 << i));
+    return result(cuts, best.sum, deltaSec, true);
+  }
+
+  // Too many floats to enumerate: greedy descending, and say it is not exact.
+  const order = floats.map((s, i) => i).sort((a, b) => floats[b].plannedSec - floats[a].plannedSec);
+  const picked = new Set();
+  let sum = 0;
+  for (const i of order) {
+    if (sum >= deltaSec) break;
+    picked.add(i);
+    sum += floats[i].plannedSec;
+  }
+  return result(
+    floats.filter((_, i) => picked.has(i)),
+    sum,
+    deltaSec,
+    false
+  );
+}
+
+function result(cuts, totalCutSec, deltaSec, exact) {
+  const covers = totalCutSec >= deltaSec;
+  return {
+    cuts,
+    totalCutSec,
+    landingSec: deltaSec - totalCutSec,
+    covers,
+    shortfallSec: covers ? 0 : deltaSec - totalCutSec,
+    exact,
+  };
+}
+
+/**
+ * Floats still available to cut: strictly AFTER the current segment (you cannot drop the segment
+ * you are already in) and not already done.
+ */
+function remainingFloats(state) {
+  return state.segments.filter((s, i) => i > state.currentIndex && s.is_float && !s.done);
+}
+
+// ---------------------------------------------------------------------------
+// State
+// ---------------------------------------------------------------------------
+
+/** data/rundown.json -> initial state. Never mutates the fixture. */
+function loadState(rundownJson) {
+  return {
+    segments: rundownJson.segments.map((seg, i) => ({
+      ...seg,
+      id: seg.page ?? String(i),
+      plannedSec: Math.round((seg.planned_min ?? 0) * 60),
+      actualSec: null,
+      done: false,
+    })),
+    hardEndSec: parseHHMM(rundownJson.hard_end),
+    currentIndex: 0,
+    status: 'idle',
+    segmentElapsedSec: 0,
+  };
+}
+
+const FIXTURE = {
+ "generated_at": "2026-08-28T11:55:03",
+ "source": "https://www.devfestdc.org/sessions",
+ "hard_end": "17:00",
+ "hard_end_note": "5pm happy hour (devfestdc.org homepage). Immovable.",
+ "segments": [
+  {
+   "page": "A1",
+   "title": "Building in the AI-first world: Scale brilliance, not bottlenecks",
+   "speakers": "Nathen Harvey",
+   "kind": "Keynote",
+   "location": "Fuse Conference Center 1311",
+   "planned_min": 45,
+   "is_float": false,
+   "start": "09:15",
+   "end": "10:00",
+   "description": "In an AI-first world, everyone can be a builder. But building is just the beginning. Shipping and running reliable applications that users love is what matters. This session will reveal a critical truth: AI's primary role is that of an amplifier. It magnifies the strengths of high-performing organizations and the dysfunctions of struggling ones. Let's look at how your team can scale brilliance and eliminate bottlenecks, enabling builders everywhere.",
+   "speaker_bio": "Nathen Harvey leads the DORA team at Google Cloud. He leverages industry-shaping research to drive product strategy and help organizations improve software delivery speed, stability, and the developer experience. A frequent speaker on DevOps and AI, Nathen is dedicated to building solutions that empower technical communities. He co-authored multiple DORA reports and contributed to \"97 Things Every Cloud Engineer Should Know\" published by O\u2019Reilly in 2020"
+  },
+  {
+   "page": "B1",
+   "title": "Two Tablets, One Bench: Real-Time Multiplayer at the Edge with Durable Objects and Workers AI (Capital One)",
+   "speakers": "Amanda J Kendal-Brown",
+   "kind": "Breakout Session",
+   "location": "Track 1 - Fuse Conference Center 1311 A",
+   "planned_min": 50,
+   "is_float": false,
+   "start": "10:00",
+   "end": "10:50",
+   "description": "Picture two roller derby coaches at opposite ends of a bench, both holding tablets and both needing to see the same jam unfold in real time, with no backend team, no compromise on the live experience, and a third read-only tablet they can hand to whoever wanders over. That\u2019s Bench Witch, and the underlying problem is everywhere: collaborative whiteboards, multi-user POS systems, shared dashboards, and any product where multiple clients need to edit shared state in real time.",
+   "speaker_bio": "Amanda Kendal-Brown is a Senior Front-End Engineer at Capital One with a decade of experience building accessible, AI-enabled web applications in React, TypeScript, and Vue. She built Bench Witch, the subject of this talk, for her own roller derby team. Outside of code, Amanda is a two-sport international athlete, representing Trinidad & Tobago on the National Archery Team and Team West Indies at three Roller Derby World Cups (2014, 2018, 2025). She is also a classically-trained percussionist specializing in steel pan and orchestral percussion, and currently performs baritone with the Reading Buccaneers Drum & Bugle Corps. Based in Fairfax, VA, she's passionate about building tools for the communities she's part of and bringing underrepresented voices to the technical stage."
+  },
+  {
+   "page": "B2",
+   "title": "Challenges, considerations, and capabilities in building agentic systems",
+   "speakers": "Rezaur Rahman, John Lee",
+   "kind": "Fireside Chat",
+   "location": "Track 1 - Fuse Conference Center 1311 A",
+   "planned_min": 50,
+   "is_float": false,
+   "start": "10:50",
+   "end": "11:40",
+   "description": "What does it take to ship agentic AI that works, not in a demo but in production systems where the answers matter? Drawing on three real AI-native platforms (a nationwide geospatial deep-research system, a permitting impact-simulation engine, and a detection-as-code cybersecurity threat-hunting pipeline), this session distils hard-won lessons from applying the latest frontier AI research in the field. We'll cover why your harness needs continuous re-engineering as model capabilities scale (and why you should be ready to throw away your code), how to design agent memory architectures that manage context and memory together, and why more agents isn't always better. We'll dig into evals as the backbone of iteration, cybersecurity considerations unique to AI-native systems, and self-evolving architectures where the system optimizes its own prompts, algorithms, and orchestration topology. You'll leave with practical patterns for building agentic systems that survive contact with reality and with the next model release.",
+   "speaker_bio": "John Lee is the cofounder and CEO of SZNS Solutions, an AI-native software services & consulting company specializing in Google Cloud Platform. SZNS (pronounced \"seasons\") was named Partner of the Year for Government Services by Google Cloud in 2026. John previously led blockchain efforts at Google. John Lee is the cofounder and CEO of SZNS Solutions, an AI-native software services & consulting company specializing in Google Cloud Platform. SZNS (pronounced \"seasons\") was named Partner of the Year for Government Services by Google Cloud in 2026. John previously led blockchain efforts at Google."
+  },
+  {
+   "page": "B3",
+   "title": "Turnaround",
+   "speakers": "",
+   "kind": "Break",
+   "location": "",
+   "planned_min": 5,
+   "is_float": true,
+   "start": "11:40",
+   "end": "11:45",
+   "description": "",
+   "speaker_bio": ""
+  },
+  {
+   "page": "B4",
+   "title": "Building in the AI Era: What Developers Need to Know About AI Policy (Google, Developers Alliance, Trustible)",
+   "speakers": "Naveen Nigam, Chris Grimm, Andrew Gamino-Cheong",
+   "kind": "Breakout Session",
+   "location": "Track 1 - Fuse Conference Center 1311 A",
+   "planned_min": 50,
+   "is_float": false,
+   "start": "11:45",
+   "end": "12:35",
+   "description": "AI is moving fast\u2014and policy is racing to catch up. This fireside chat explores the latest developments in AI policy, what developers should expect next, and why it matters.",
+   "speaker_bio": "Naveen Nigam is a natural leader experienced in leading large cross-functional teams. 20 years of strategic management, program/project management, operations, change management & policy creation experience. A tenacious attitude, skilled at fostering strategic alignment at all levels of an organization. Comes with a track record and proven ability to build relationships, creating 'win-win' situations."
+  },
+  {
+   "page": "B5",
+   "title": "Lunch",
+   "speakers": "",
+   "kind": "Break",
+   "location": "",
+   "planned_min": 55,
+   "is_float": true,
+   "start": "12:35",
+   "end": "13:30",
+   "description": "",
+   "speaker_bio": ""
+  },
+  {
+   "page": "C1",
+   "title": "AppFunctions: Making Your Android App Agent-Ready (Thomson Reuters)",
+   "speakers": "Chrystian Vieyra Cortes",
+   "kind": "Breakout Session",
+   "location": "Track 1 - Fuse Conference Center 1311 A",
+   "planned_min": 50,
+   "is_float": false,
+   "start": "13:30",
+   "end": "14:20",
+   "description": "The AppFunctions Jetpack framework allows apps to expose structured, callable capabilities directly to the OS and on-device AI agents. This marks a fundamental shift away from fragile screen scraping and rigid intents, enabling true agentic development where models natively discover and invoke your app's features. We will demystify how AppFunctions work and contrast them with older approaches like App Actions and MCP. Through a focused code demo, you will see how to define typed, callable functions that allow agents to execute tasks straight from natural language prompts.",
+   "speaker_bio": "I am a mobile engineering leader focused on building strong teams and mobile apps that reach millions of users. I am currently Director of Software Engineering at Thomson Reuters, where I lead mobile engineering for the Reuters app. My work focuses on engineering execution, platform modernization, and helping distributed teams deliver high-quality mobile experiences."
+  },
+  {
+   "page": "C2",
+   "title": "Where the Agent Stops: Boundaries, Orchestration, and Legacy Integration in Government AI",
+   "speakers": "William Lopez, Chris Tonjes, Gerry Gomez",
+   "kind": "Breakout Session",
+   "location": "Track 1 - Fuse Conference Center 1311 A",
+   "planned_min": 50,
+   "is_float": false,
+   "start": "14:20",
+   "end": "15:10",
+   "description": "An agent that pre-screens eligibility and an agent that determines eligibility are not the same system, but they can look identical in a demo. This panel is about the difference, told through two production systems: WIOA GO (agent-assisted eligibility screening for DC unemployment/workforce services) and the DC Department of Employment Services state system, which connect to create a seamless experience. We\u2019ll dig into where the decision boundary is actually implemented, how multiple agents coordinate on one case without stepping on each other, and what it takes to wire agents into legacy government infrastructure that was never built for them.",
+   "speaker_bio": "Will Lopez is the President and Co-Founder of BuildWithin, a technology company delivering AI-powered workforce solutions and apprenticeship management platforms. In his role, Will leads revenue strategy, financial planning, and government partnerships, driving innovation at the intersection of technology, public policy, and workforce development.\nUnder his leadership, BuildWithin has expanded nationally, helping government agencies, workforce boards, and employers modernize talent pipelines through skills-based hiring, apprenticeship programs, and AI-driven workforce technology. Previously, Will served on the executive leadership team at Phone2Action, helping lead the company through acquisition, the integrations of KnowWho and GovPredict, and its successful exit in 2019."
+  },
+  {
+   "page": "C3",
+   "title": "Turnaround",
+   "speakers": "",
+   "kind": "Break",
+   "location": "",
+   "planned_min": 5,
+   "is_float": true,
+   "start": "15:10",
+   "end": "15:15",
+   "description": "",
+   "speaker_bio": ""
+  },
+  {
+   "page": "C4",
+   "title": "The Invisible City: Building Real-Time Spatial Agents (and Surviving Reality) (Leidos)",
+   "speakers": "Noble Ackerson",
+   "kind": "Breakout Session",
+   "location": "Track 1 - Fuse Conference Center 1311 A",
+   "planned_min": 50,
+   "is_float": false,
+   "start": "15:15",
+   "end": "16:05",
+   "description": "If your multi-agent pipeline forces users to watch a loading spinner while it thinks, you have already lost them. But if your agent hallucinates a high-pressure gas line on a city street, you have a much bigger problem.\nAligned with the \"Build Edition\" theme, this session strips away the \"Hello, World\" chatbot boilerplate to walk through the architecture of The Invisible City\u2014a real-time, see-through AR visualization of underground municipal infrastructure. We will dissect how to pair Gemini\u2019s multimodal vision capabilities with a Next.js and FastAPI stack to build event-driven agents that actually interact with the physical world.",
+   "speaker_bio": "Noble Ackerson is the Senior Director of AI and Agentic Solutions at Leidos, a Google Developer Expert (GDE) for AI, and an instructor for Udacity's Agentic AI programs. With over 19 years of experience bridging software engineering and machine learning, Noble focuses on \"calibrated trust\", building responsible, governed, and highly performant distributed multi-agent systems that survive real-world deployment. He actively prototypes at the intersection of generative UI, spatial computing, and vendor-agnostic agent orchestration."
+  },
+  {
+   "page": "C5",
+   "title": "Buffer to Happy Hour",
+   "speakers": "",
+   "kind": "Break",
+   "location": "",
+   "planned_min": 55,
+   "is_float": true,
+   "start": "16:05",
+   "end": "17:00",
+   "description": "",
+   "speaker_bio": ""
+  }
+ ]
+};
+// Backtime — wiring layer. Owns state, transport, and the tick loop.
+// Arithmetic lives in lib/timing.js. Rendering lives in index.html's render(vm).
+// This file computes NOTHING about timing itself — it delegates to timing.js.
+
+const KEY = 'backtime.state.v1';
+const TICK_MS = 250;
+
+let S = null;          // live state
+let render = () => {}; // injected by index.html
+let timer = null;
+
+// ---------- wall clock ----------
+// clockOffsetSec lets us rehearse at any hour without waiting for 9:15am.
+const nowSec = () => {
+  const d = new Date();
+  return d.getHours() * 3600 + d.getMinutes() * 60 + d.getSeconds() + (S?.clockOffsetSec || 0);
+};
+
+// Segment starts are snapped to a whole second so that elapsed and wall-clock tick over
+// at the same instant; otherwise their floors disagree by 1s half the time.
+const alignedNow = () => Math.round(Date.now() / 1000) * 1000;
+
+// ---------- persistence ----------
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch {} };
+const restore = () => { try { return JSON.parse(localStorage.getItem(KEY) || 'null'); } catch { return null; } };
+
+// ---------- history, for BACK ----------
+const snapshot = () => {
+  const { history, ...rest } = S;
+  S.history.push(JSON.stringify(rest));
+  if (S.history.length > 50) S.history.shift();
+};
+const rewind = () => {
+  const prev = S.history.pop();
+  if (!prev) return false;
+  const h = S.history;
+  S = { ...JSON.parse(prev), history: h };
+  return true;
+};
+
+// ---------- elapsed in current segment ----------
+function segmentElapsedSec() {
+  if (!S.segStartedMs) return 0;
+  const pausedNow = S.status === 'paused' && S.pausedAtMs ? Date.now() - S.pausedAtMs : 0;
+  // floor, not round — and segStartedMs is second-aligned (see T.start / T.next) so this
+  // ticks over in lockstep with nowSec(). Mixed rounding here made the readout jitter +/-1s.
+  return Math.max(0, Math.floor((Date.now() - S.segStartedMs - S.pausedAccumMs - pausedNow) / 1000));
+}
+
+// ---------- schedule editing ----------
+// Starts are the source of truth; durations are DERIVED from consecutive starts (which is
+// exactly how scrape_devfest.py built the fixture -- the site publishes start times only).
+// So moving one start changes the two adjacent durations, and the back-time column follows.
+function recomputeFromStarts() {
+  const n = S.segments.length;
+  for (let i = 0; i < n; i++) {
+    const s = parseHHMM(S.segments[i].start);
+    const e = i + 1 < n ? parseHHMM(S.segments[i + 1].start) : S.hardEndSec;
+    S.segments[i].plannedSec = Math.max(60, e - s);   // never zero or negative
+    S.segments[i].end = fmtHHMM(s + S.segments[i].plannedSec);
+  }
+}
+
+// Returns null on success, or a reason string the caller can surface.
+function setStart(page, hhmm) {
+  const i = S.segments.findIndex(s => s.page === page);
+  if (i < 0) return 'no such row';
+  const norm = String(hhmm).trim()
+    .replace(/^(\d{1,2})[.\s]?(\d{2})$/, '$1:$2')      // 1005 / 10.05 -> 10:05
+    .replace(/^(\d):/, '0$1:');                         // 9:15 -> 09:15
+  const t = parseHHMM(norm);
+  if (!Number.isFinite(t)) return 'not a time';
+  const prev = i > 0 ? parseHHMM(S.segments[i - 1].start) : -Infinity;
+  const next = i + 1 < S.segments.length ? parseHHMM(S.segments[i + 1].start) : S.hardEndSec;
+  // A start must stay inside its neighbours, with a minute of room either side.
+  if (t <= prev) return `must be after ${fmtHHMM(prev)}`;
+  if (t >= next) return `must be before ${fmtHHMM(next)}`;
+  snapshot();                       // BACK undoes a schedule edit
+  S.segments[i].start = fmtHHMM(t);
+  recomputeFromStarts();
+  save();
+  return null;
+}
+
+// ---------- transport ----------
+const T = {
+  start() {
+    if (S.status === 'running') return;
+    snapshot();
+    if (S.status === 'idle') {
+      const bt = backtimes(S.segments, S.hardEndSec)[S.currentIndex];
+      const real = nowSec() - S.clockOffsetSec;
+      if (real < bt || real > S.hardEndSec) {       // rehearsing outside show hours
+        S.clockOffsetSec = bt - real;
+        console.warn(`[backtime] rehearsal clock: real time is outside the show window, ` +
+          `so the clock is offset to start on time at ${fmtHHMM(bt)}. ` +
+          `Backtime.setClock('HH:MM') to move it; Backtime.reset() to clear.`);
+      }
+    }
+    S.status = 'running';
+    S.segStartedMs = alignedNow();
+    S.pausedAccumMs = 0; S.pausedAtMs = null;
+    save();
+  },
+  next() {
+    if (S.status !== 'running' && S.status !== 'paused') return;
+    snapshot();
+    const cur = S.segments[S.currentIndex];
+    if (cur) { cur.actualSec = segmentElapsedSec(); cur.done = true; }
+    if (S.currentIndex < S.segments.length - 1) {
+      S.currentIndex += 1;
+      S.segStartedMs = alignedNow();
+      S.pausedAccumMs = 0; S.pausedAtMs = null;
+      if (S.status === 'paused') S.status = 'running';
+    } else {
+      S.status = 'stopped';
+    }
+    save();
+  },
+  back() {                       // subsumes UNDO — restores prior state exactly
+    if (rewind()) save();
+  },
+  stop() {
+    snapshot();
+    S.status = 'stopped';
+    save();
+  },
+  pause() {
+    if (S.status === 'running') {
+      S.status = 'paused'; S.pausedAtMs = Date.now();
+    } else if (S.status === 'paused') {
+      S.pausedAccumMs += Date.now() - (S.pausedAtMs || Date.now());
+      S.pausedAtMs = null; S.status = 'running';
+    }
+    save();
+  },
+  // Mark/unmark a segment as droppable, live. A producer decides what dies mid-show.
+  toggleFloat(page) {
+    const seg = S.segments.find(s => s.page === page);
+    if (!seg) return;
+    snapshot();                       // BACK undoes a float toggle too
+    seg.is_float = !seg.is_float;
+    save();
+  },
+  setStart(page, hhmm) { return setStart(page, hhmm); },
+  // Reset the RUN: clear actuals and return to standby, but KEEP schedule edits,
+  // float marks and edited descriptions. Those are prep work; a producer resetting
+  // between rehearsals does not want them thrown away. Full wipe is T.resetAll().
+  resetRun() {
+    snapshot();                       // BACK undoes a reset, so no confirm dialog
+    for (const s of S.segments) { s.actualSec = null; s.done = false; }
+    S.currentIndex = 0;
+    S.status = 'idle';
+    S.segStartedMs = null;
+    S.pausedAccumMs = 0;
+    S.pausedAtMs = null;
+    S.editorPage = null;
+    save();
+  },
+  resetAll() {
+    S = loadState(FIXTURE);
+    S.fixture = FIXTURE; S.history = []; S.clockOffsetSec = 0; S.editorPage = null;
+    save();
+  },
+  reset() { T.resetAll(); },          // console alias; DEMO.md still says Backtime.reset()
+};
+
+// ---------- editor ----------
+function openEditor(page) {
+  const seg = S.segments.find(s => s.page === page);
+  if (!seg) return;
+  S.editorPage = page;
+  paint();
+}
+function closeEditor() { S.editorPage = null; paint(); }
+function saveEditor(text) {
+  const seg = S.segments.find(s => s.page === S.editorPage);
+  if (seg) seg.description = text;
+  S.editorPage = null;
+  save(); paint();
+}
+
+// ---------- view model ----------
+function buildVM() {
+  const elapsed = segmentElapsedSec();
+  const n = nowSec();
+  const bts = backtimes(S.segments, S.hardEndSec);
+  const idle = S.status === 'idle';
+  const stopped = S.status === 'stopped';
+
+  const d = computeDelta({ ...S, segmentElapsedSec: elapsed }, n);
+
+  // Conference clock: wall-clock countdown to the hard end. Goes negative past 17:00.
+  const confLeft = S.hardEndSec - n;
+  // Segment clock: time left in the current segment. Goes negative when the segment runs long.
+  const cur = S.segments[S.currentIndex];
+  const segLeft = cur ? cur.plannedSec - elapsed : 0;
+
+  // Float recommendation only when heavy.
+  let recommendation = null;
+  if (!idle && !stopped && d.state === 'HEAVY') {
+    // strictly AFTER the current index: you cannot drop the segment that is on air
+    const floats = S.segments.filter((s, i) => s.is_float && !s.done && i > S.currentIndex);
+    const r = solveFloats(floats, d.deltaSec);
+    // Page code + a short slug: readable across a room, and it is how a control
+    // room actually names a segment ("drop B5") rather than reciting its title.
+    const short = t => (t.length > 30 ? t.slice(0, 29).trimEnd() + '…' : t);
+    const names = r.cuts.map(c => `${c.page} "${short(c.title)}"`);
+    const list = names.length > 1
+      ? names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1]
+      : (names[0] || '');
+    recommendation = r.covers
+      ? { sentence: `Drop ${list} → you land at ${fmtSigned(r.landingSec)}`, covers: true }
+      : { sentence: `Cutting every float still leaves you ${fmtSigned(r.shortfallSec)} heavy.`, covers: false };
+  }
+
+  const editor = S.editorPage
+    ? (seg => seg && {
+        page: seg.page, slug: seg.title,
+        description: seg.description || '', speakerBio: seg.speaker_bio || '',
+      })(S.segments.find(s => s.page === S.editorPage))
+    : null;
+
+  return {
+    status: S.status,
+    readout: idle
+      ? { text: '0:00', label: 'STANDBY', state: 'ONTIME' }
+      : stopped
+        ? { text: '0:00', label: 'STOPPED', state: 'ONTIME' }
+        : { text: fmtSigned(d.deltaSec), label: d.state, state: d.state },
+    conferenceClock: { text: fmtDur(Math.abs(confLeft)), negative: confLeft < 0 },
+    segmentClock: idle
+      ? { text: fmtDur(cur ? cur.plannedSec : 0), negative: false }
+      : stopped
+        ? { text: '0:00', negative: false }
+        : { text: fmtDur(Math.abs(segLeft)), negative: segLeft < 0 },
+    recommendation,
+    rows: S.segments.map((s, i) => ({
+      page: s.page,
+      slug: s.title,
+      speaker: s.speakers || '',
+      duration: fmtDur(s.plannedSec),
+      start: s.start,
+      end: s.end,
+      backtime: fmtHHMM(bts[i]),
+      isFloat: !!s.is_float,
+      done: !!s.done,
+      current: i === S.currentIndex && !idle,
+      variance: s.done && s.actualSec != null ? fmtSigned(s.actualSec - s.plannedSec) : null,
+      varianceState: s.done && s.actualSec != null
+        ? (s.actualSec > s.plannedSec ? 'over' : 'under') : null,
+    })),
+    editor,
+  };
+}
+
+const paint = () => render(buildVM());
+
+// ---------- boot ----------
+function init(renderFn) {
+  render = renderFn;
+  const fixture = FIXTURE;
+  const saved = restore();
+  S = saved && saved.segments?.length ? saved : loadState(fixture);
+  S.fixture = fixture;
+  S.history = S.history || [];
+  S.clockOffsetSec = S.clockOffsetSec || 0;
+  S.editorPage = null;
+
+  clearInterval(timer);
+  timer = setInterval(paint, TICK_MS);
+  paint();
+}
+
+window.Backtime = {
+  init,
+  transport: Object.fromEntries(Object.entries(T).map(([k, f]) => [k, (...a) => { f(...a); paint(); }])),
+  openEditor, closeEditor, saveEditor,
+  toggleFloat: page => { T.toggleFloat(page); paint(); },
+  setStart: (page, hhmm) => { const err = setStart(page, hhmm); if (!err) paint(); return err; },
+  state: () => S,
+  reset:    () => { T.resetAll(); paint(); },   // full wipe, back to the scraped fixture
+  resetAll: () => { T.resetAll(); paint(); },
+  resetRun: () => { T.resetRun(); paint(); },
+  setClock: hhmm => { S.clockOffsetSec = parseHHMM(hhmm) - (nowSec() - S.clockOffsetSec); paint(); },
+};
+})();
+
+</script>
+<script>
+/* ==========================================================================
+   Backtime — presentation layer.
+
+   THE RULE FOR THIS FILE: it contains zero timing logic. No Date math, no
+   duration arithmetic, no back-timing, no delta, no float solving, no
+   interval driving real time. Every string below arrives pre-formatted in
+   the view model. If you find yourself computing a time here, it belongs
+   in lib/timing.js instead.
+   ========================================================================== */
+
+/* ------------------------------------------------------------ view model --
+   render(vm) takes exactly this shape:
+
+   {
+     status: 'idle' | 'running' | 'paused' | 'stopped',
+     readout: { text: string, label: string, state: 'HEAVY'|'LIGHT'|'ONTIME' },
+     conferenceClock: { text: string, negative: boolean },
+     segmentClock:    { text: string, negative: boolean },
+     recommendation: null | { sentence: string, covers: boolean },
+     rows: Array<{
+       page: string, slug: string, speaker: string,
+       duration: string, start: string, end: string, backtime: string,
+       isFloat: boolean, done: boolean, current: boolean,
+       variance: string|null,                 // null unless done
+       varianceState: 'over'|'under'|null
+     }>,
+     editor: null | { page, slug, description, speakerBio }
+   }
+   -------------------------------------------------------------------------- */
+
+const DEMO_VM = {
+  status: 'running',
+  readout: { text: '+4:00', label: 'HEAVY', state: 'HEAVY' },
+  conferenceClock: { text: '2:34:40', negative: false },
+  segmentClock:    { text: '-1:20',   negative: true  },
+  recommendation: {
+    sentence: 'Drop "Turnaround" → you land at −1:00',
+    covers: true
+  },
+  rows: [
+    { page:'A1', slug:'Building in the AI-first world: Scale brilliance, not bottlenecks',
+      speaker:'Nathen Harvey', duration:'45:00', start:'09:15', end:'10:00',
+      backtime:'09:15', isFloat:false, done:true, current:false,
+      variance:'+1:40', varianceState:'over' },
+    { page:'B1', slug:'Two Tablets, One Bench: Real-Time Multiplayer at the Edge with Durable Objects and Workers AI',
+      speaker:'Amanda J Kendal-Brown', duration:'50:00', start:'10:00', end:'10:50',
+      backtime:'10:00', isFloat:false, done:true, current:false,
+      variance:'−0:35', varianceState:'under' },
+    { page:'B2', slug:'Challenges, considerations, and capabilities in building agentic systems',
+      speaker:'Rezaur Rahman, John Lee', duration:'50:00', start:'10:50', end:'11:40',
+      backtime:'10:50', isFloat:false, done:true, current:false,
+      variance:'+2:10', varianceState:'over' },
+    { page:'B3', slug:'Turnaround',
+      speaker:'—', duration:'05:00', start:'11:40', end:'11:45',
+      backtime:'11:40', isFloat:true, done:true, current:false,
+      variance:'+0:25', varianceState:'over' },
+    { page:'B4', slug:'Building in the AI Era: What Developers Need to Know About Agents',
+      speaker:'Naveen Nigam, Chris Grimm, Andrew Chen', duration:'50:00', start:'11:45', end:'12:35',
+      backtime:'11:45', isFloat:false, done:true, current:false,
+      variance:'+1:20', varianceState:'over' },
+    { page:'B5', slug:'Lunch',
+      speaker:'—', duration:'55:00', start:'12:35', end:'13:30',
+      backtime:'12:35', isFloat:true, done:true, current:false,
+      variance:'−1:00', varianceState:'under' },
+    { page:'C1', slug:'AppFunctions: Making Your Android App Agent-Ready',
+      speaker:'Chrystian Vieyra Cortes', duration:'50:00', start:'13:30', end:'14:20',
+      backtime:'13:30', isFloat:false, done:false, current:true,
+      variance:null, varianceState:null },
+    { page:'C2', slug:'Where the Agent Stops: Boundaries, Orchestration, and Legacy Systems',
+      speaker:'William Lopez, Chris Tonjes, Grace Kim', duration:'50:00', start:'14:20', end:'15:10',
+      backtime:'14:20', isFloat:false, done:false, current:false,
+      variance:null, varianceState:null },
+    { page:'C3', slug:'Turnaround',
+      speaker:'—', duration:'05:00', start:'15:10', end:'15:15',
+      backtime:'15:10', isFloat:true, done:false, current:false,
+      variance:null, varianceState:null },
+    { page:'C4', slug:'The Invisible City: Building Real-Time Spatial Agents',
+      speaker:'Noble Ackerson', duration:'50:00', start:'15:15', end:'16:05',
+      backtime:'15:15', isFloat:false, done:false, current:false,
+      variance:null, varianceState:null },
+    { page:'C5', slug:'Buffer to Happy Hour',
+      speaker:'—', duration:'55:00', start:'16:05', end:'17:00',
+      backtime:'16:05', isFloat:true, done:false, current:false,
+      variance:null, varianceState:null }
+  ],
+  editor: null
+};
+
+/* ------------------------------------------------------------------- dom -- */
+
+const $ = (id) => document.getElementById(id);
+
+const el = {
+  statusPill: $('status-pill'),
+  readout: $('readout'),
+  readoutValue: $('readout-value'),
+  readoutState: $('readout-state'),
+  confClock: $('clock-conference'),
+  confValue: $('clock-conference-value'),
+  confFlag: $('clock-conference-flag'),
+  segClock: $('clock-segment'),
+  segValue: $('clock-segment-value'),
+  segFlag: $('clock-segment-flag'),
+  rec: $('recommendation'),
+  recTag: $('recommendation-tag'),
+  recText: $('recommendation-text'),
+  body: $('rundown-body'),
+  backdrop: $('editor-backdrop'),
+  editorPage: $('editor-page'),
+  editorTitle: $('editor-title'),
+  editorText: $('editor-text'),
+  editorBio: $('editor-bio'),
+  btnStart: $('btn-start'),
+  btnNext: $('btn-next'),
+  btnBack: $('btn-back'),
+  btnPause: $('btn-pause'),
+  btnStop: $('btn-stop'),
+  btnReset: $('btn-reset')
+};
+
+/* Transport availability per status. Presentation only — the engine decides
+   what each button actually does. hidden/disabled/label, nothing else. */
+const TRANSPORT = {
+  // BACK stays live in idle: floats get marked during prep, before START, and a
+  // mis-click there must be undoable. With an empty history it is a no-op.
+  idle:    { start:{show:true,  on:true },  next:{on:false}, back:{on:true }, stop:{on:false}, pause:{on:false, label:'PAUSE',  armed:false}, reset:{on:true} },
+  running: { start:{show:false, on:false},  next:{on:true },  back:{on:true }, stop:{on:true }, pause:{on:true,  label:'PAUSE',  armed:false}, reset:{on:true} },
+  paused:  { start:{show:false, on:false},  next:{on:false}, back:{on:true }, stop:{on:true }, pause:{on:true,  label:'RESUME', armed:true }, reset:{on:true} },
+  stopped: { start:{show:true,  on:true },  next:{on:false}, back:{on:true }, stop:{on:false}, pause:{on:false, label:'PAUSE',  armed:false}, reset:{on:true} }
+};
+
+/* ---------------------------------------------------------------- render -- */
+
+let currentVm = null;
+
+/**
+ * Paint the whole screen from a fully-computed view model.
+ * Full repaint, idempotent, no state of its own beyond `currentVm`.
+ * @param {object} vm — see the view-model comment above.
+ */
+function render(vm) {
+  currentVm = vm;
+
+  // status ------------------------------------------------------------------
+  el.statusPill.dataset.status = vm.status;
+  el.statusPill.textContent = vm.status === 'running' ? 'ON AIR' : vm.status.toUpperCase();
+
+  // readout -----------------------------------------------------------------
+  el.readout.dataset.state = vm.readout.state;
+  el.readoutValue.textContent = vm.readout.text;
+  el.readoutState.textContent = vm.readout.label;
+
+  // clocks ------------------------------------------------------------------
+  paintClock(el.confClock, el.confValue, el.confFlag, vm.conferenceClock);
+  paintClock(el.segClock,  el.segValue,  el.segFlag,  vm.segmentClock);
+
+  // recommendation ----------------------------------------------------------
+  if (vm.recommendation) {
+    el.rec.hidden = false;
+    el.rec.classList.toggle('is-warning', vm.recommendation.covers === false);
+    el.recTag.textContent = vm.recommendation.covers ? 'CUT' : 'NO CUT COVERS';
+    el.recText.textContent = vm.recommendation.sentence;
+  } else {
+    el.rec.hidden = true;
+  }
+
+  // transport ---------------------------------------------------------------
+  const t = TRANSPORT[vm.status] || TRANSPORT.idle;
+  el.btnStart.hidden   = !t.start.show;
+  el.btnStart.disabled = !t.start.on;
+  el.btnNext.disabled  = !t.next.on;
+  el.btnBack.disabled  = !t.back.on;
+  el.btnStop.disabled  = !t.stop.on;
+  el.btnPause.disabled = !t.pause.on;
+  el.btnPause.textContent = t.pause.label;
+  el.btnPause.classList.toggle('is-armed', t.pause.armed);
+  el.btnReset.disabled = !(t.reset && t.reset.on);
+
+  // rundown -----------------------------------------------------------------
+  // The engine repaints ~4x/second. Rebuilding the body while a START cell is being
+  // edited would rip the <input> out from under the cursor mid-keystroke, so the table
+  // holds still until the edit settles. Readout and clocks above keep ticking.
+  if (!inlineEditOpen) {
+    const frag = document.createDocumentFragment();
+    for (const row of vm.rows) frag.appendChild(buildRow(row));
+    el.body.replaceChildren(frag);
+  }
+
+  // editor ------------------------------------------------------------------
+  paintEditor(vm.editor);
+}
+
+function paintClock(box, value, flag, clock) {
+  box.classList.toggle('is-negative', !!clock.negative);
+  flag.hidden = !clock.negative;
+  value.textContent = clock.text;
+}
+
+function buildRow(row) {
+  const tr = document.createElement('tr');
+  tr.classList.toggle('is-done', !!row.done);
+  tr.classList.toggle('is-float', !!row.isFloat);
+  tr.classList.toggle('is-current', !!row.current);
+
+  tr.appendChild(cell('cell-page mono', row.page));
+
+  // SLUG — the only double-clickable cell in the rundown.
+  const slug = document.createElement('td');
+  slug.className = 'cell-slug';
+  const slugSpan = document.createElement('span');
+  slugSpan.className = 'slug-target';
+  slugSpan.textContent = row.slug;
+  slug.appendChild(slugSpan);
+  slug.title = row.slug + '  —  double-click to edit';
+  slug.ondblclick = () => openEditor(row.page);
+  tr.appendChild(slug);
+
+  tr.appendChild(cell('cell-speaker', row.speaker));
+
+  // DUR carries the completed row's variance so the column list stays exact.
+  const dur = document.createElement('td');
+  dur.className = 'cell-dur mono';
+  const durText = document.createElement('span');
+  durText.textContent = row.duration;
+  dur.appendChild(durText);
+  if (row.variance) {
+    const v = document.createElement('span');
+    v.className = 'chip-var ' + (row.varianceState === 'under' ? 'is-under' : 'is-over');
+    v.textContent = row.variance;
+    dur.appendChild(v);
+  }
+  tr.appendChild(dur);
+
+  const startTd = cell('cell-num mono cell-start', row.start);
+  startTd.title = 'Double-click to change the start time';
+  startTd.ondblclick = () => beginStartEdit(startTd, row.page, row.start);
+  tr.appendChild(startTd);
+  tr.appendChild(cell('cell-num mono', row.end));
+  tr.appendChild(cell('cell-backtime mono', row.backtime));
+
+  const float = document.createElement('td');
+  float.className = 'cell-float';
+  const chip = document.createElement('span');
+  chip.className = row.isFloat ? 'chip-float' : 'chip-float chip-float-off';
+  chip.textContent = 'FLOAT';
+  chip.title = row.isFloat
+    ? 'Droppable when heavy — click to unmark'
+    : 'Click to mark droppable';
+  // single click toggles (the SLUG cell owns double-click; keep them distinct)
+  float.onclick = () => Backtime.toggleFloat(row.page);
+  float.appendChild(chip);
+  tr.appendChild(float);
+
+  return tr;
+}
+
+/**
+ * Swap a START cell for an input. Enter commits, Esc cancels, blur commits.
+ * A rejected value keeps the input up with the reason in the tooltip, rather
+ * than silently snapping back to the old time.
+ */
+let inlineEditOpen = false;   // true while a START cell owns the keyboard
+
+function beginStartEdit(td, page, current) {
+  if (td.querySelector('input')) return;
+  inlineEditOpen = true;
+  const input = document.createElement('input');
+  input.className = 'start-input mono';
+  input.value = current;
+  input.setAttribute('aria-label', 'Start time for ' + page);
+  td.textContent = '';
+  td.appendChild(input);
+  input.focus();
+  input.select();
+
+  let settled = false;
+  const commit = () => {
+    if (settled) return;
+    // Claim the commit BEFORE calling in: a successful edit repaints, which detaches this
+    // input and fires blur -> commit() again. Without the up-front claim that second pass
+    // applies the edit twice and pushes two history entries, so BACK only undoes half of it.
+    settled = true;
+    inlineEditOpen = false;       // release the table before the repaint lands
+    const err = Backtime.setStart(page, input.value);
+    if (err) {
+      settled = false;            // rejected: stay in edit mode and let them retry
+      inlineEditOpen = true;
+      td.classList.add('cell-start-error');
+      input.title = err;
+      input.focus();
+    }
+  };
+  const cancel = () => { if (settled) return; settled = true; inlineEditOpen = false; render(currentVm); };
+
+  input.addEventListener('keydown', (e) => {
+    e.stopPropagation();          // keep Esc away from the editor-modal handler
+    if (e.key === 'Enter') { e.preventDefault(); commit(); }
+    else if (e.key === 'Escape') { e.preventDefault(); cancel(); }
+  });
+  input.addEventListener('input', () => td.classList.remove('cell-start-error'));
+  input.addEventListener('blur', commit);
+}
+
+function cell(className, text) {
+  const td = document.createElement('td');
+  td.className = className;
+  td.textContent = text ?? '';
+  return td;
+}
+
+function paintEditor(editor) {
+  if (!editor) { el.backdrop.hidden = true; return; }
+  el.backdrop.hidden = false;
+  el.editorPage.textContent = editor.page;
+  el.editorTitle.textContent = editor.slug;
+  el.editorText.value = editor.description ?? '';
+  el.editorBio.textContent = editor.speakerBio || 'No bio on file.';
+  el.editorText.focus();
+}
+
+/* ------------------------------------------------------------------ stubs --
+   Every handler below is a no-op placeholder. The timing engine gets wired
+   into these; none of them may grow arithmetic.
+   -------------------------------------------------------------------------- */
+
+function onStart() { Backtime.transport.start(); }
+function onNext()  { Backtime.transport.next();  }
+function onBack()  { Backtime.transport.back();  }   // subsumes UNDO
+function onPause() { Backtime.transport.pause(); }   // toggles pause/resume
+function onStop()  { Backtime.transport.stop();  }
+// Clears actuals and returns to standby. Keeps schedule edits, floats and
+// descriptions -- and BACK undoes it, so it needs no confirm dialog.
+function onReset() { Backtime.resetRun(); }
+
+/** STUB: opens the slug editor for `page`. Engine supplies vm.editor. */
+function openEditor(page) {
+  Backtime.openEditor(page);
+}
+
+/** STUB: closes the slug editor without saving. */
+function closeEditor() {
+  Backtime.closeEditor();
+}
+
+/** STUB: persists the edited description. */
+function saveEditor(text) {
+  Backtime.saveEditor(text);
+}
+
+el.btnStart.addEventListener('click', onStart);
+el.btnNext .addEventListener('click', onNext);
+el.btnBack .addEventListener('click', onBack);
+el.btnPause.addEventListener('click', onPause);
+el.btnStop .addEventListener('click', onStop);
+el.btnReset.addEventListener('click', onReset);
+
+$('btn-editor-cancel').addEventListener('click', () => closeEditor());
+$('btn-editor-save').addEventListener('click', () => saveEditor(el.editorText.value));
+el.backdrop.addEventListener('mousedown', (e) => {
+  if (e.target === el.backdrop) closeEditor();
+});
+
+document.addEventListener('keydown', (e) => {
+  if (el.backdrop.hidden) return;
+  if (e.key === 'Escape') { e.preventDefault(); closeEditor(); }
+  else if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+    e.preventDefault();
+    saveEditor(el.editorText.value);
+  }
+});
+
+/* Demo copy for the editor stub, lifted from data/rundown.json. */
+const DEMO_DESCRIPTIONS = {
+  A1: "In an AI-first world, everyone can be a builder. But building is just the beginning. Shipping and running reliable applications that users love is what matters. This session will reveal a critical truth: AI's primary role is that of an amplifier. It magnifies the strengths of high-performing organizations and the dysfunctions of struggling ones. Let's look at how your team can scale brilliance and eliminate bottlenecks, enabling builders everywhere.",
+  C1: "Android apps are about to be spoken to, not tapped. AppFunctions exposes an app's capabilities to on-device agents. This session walks the API surface, the manifest work, and the failure modes you hit the first time an agent calls into your app."
+};
+const DEMO_BIOS = {
+  A1: "Nathen Harvey leads the DORA team at Google Cloud. He leverages industry-shaping research to drive product strategy and help organizations improve software delivery speed, stability, and the developer experience. A frequent speaker on DevOps and AI, Nathen co-authored multiple DORA reports and contributed to “97 Things Every Cloud Engineer Should Know” (O’Reilly, 2020).",
+  C1: "Chrystian Vieyra Cortes is a mobile engineer at Thomson Reuters working on agent-ready Android surfaces."
+};
+
+/* --------------------------------------------------------------- bootstrap */
+
+Backtime.init(render);   // engine drives render() on a 250ms tick
+
+// Exposed so the engine (and a console poke) can drive the same entry point.
+window.render = render;
+</script>
+
+</body>
+</html>
