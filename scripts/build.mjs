@@ -20,6 +20,7 @@ window.Backtime = {
   init,
   transport: Object.fromEntries(Object.entries(T).map(([k, f]) => [k, (...a) => { f(...a); paint(); }])),
   openEditor, closeEditor, saveEditor,
+  toggleFloat: page => { T.toggleFloat(page); paint(); },
   state: () => S,
   reset: () => { T.reset(); paint(); },
   setClock: hhmm => { S.clockOffsetSec = parseHHMM(hhmm) - (nowSec() - S.clockOffsetSec); paint(); },

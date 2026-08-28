@@ -35,6 +35,25 @@ it — the real wall clock is the point.
 Past ~5 min of overage the solver correctly reaches for the 55-minute Lunch and the landing figure
 gets ugly (`−35:00`). Four minutes is the clean beat.
 
+## Floating a row live
+
+**Click the FLOAT cell on any row to mark it droppable.** Click again to unmark. The chip is
+invisible until you hover the row, so the table stays clean.
+
+This is the control that matters when the day goes badly. Out of the box only the breaks are
+floats — two turnarounds, lunch, and the buffer, 120 minutes total. When the overage is bigger
+than that, the tool says so honestly rather than inventing a cut:
+
+> *Cutting every float still leaves you +1:00:00 heavy.*
+
+That is your cue to float an actual session. Click FLOAT on a 50-minute breakout and the solver
+picks it up immediately. **BACK undoes a float toggle**, including one made before START.
+
+Cuts are named by page code and short slug — `Drop B3 "Turnaround"` — the way a control room
+names a segment, not by reciting its full title.
+
+The segment currently on air is never offered as a cut. You cannot drop what is already playing.
+
 ## If something goes wrong on stage
 
 - Mis-tapped **NEXT** → hit **BACK**. It restores the prior state exactly. Verified.

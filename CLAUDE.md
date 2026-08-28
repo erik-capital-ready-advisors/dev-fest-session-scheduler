@@ -32,6 +32,12 @@ Build the UI first and you spend the back half debugging arithmetic through a re
   keep it visible and editable in the manual table. Never present a derived duration as authoritative.
 - `hard_end` is **17:00**, sourced from the happy-hour slot on the homepage, not from `/sessions`.
 
+## Floats are live
+
+`is_float` is not fixed by the fixture. Clicking a row's FLOAT cell toggles it, `BACK` undoes it,
+and the change persists to `localStorage`. The solver only ever considers floats **strictly after**
+the current index — a segment on air is not droppable.
+
 ## Non-negotiables
 
 1. **Zero model calls on the critical path.** The scrape replaced paste-parse. If paste-parse comes

@@ -616,3 +616,15 @@ tr.is-current .cell-page::before {
   .clocks { justify-content: flex-start; }
   .col-speaker, .cell-speaker { display: none; }
 }
+
+/* --- live float toggle -------------------------------------------------- */
+.cell-float { cursor: pointer; user-select: none; }
+.chip-float-off {
+  opacity: 0;
+  border-style: dashed;
+  background: none;
+  transition: opacity .12s ease;
+}
+tr:hover .chip-float-off { opacity: .38; }
+.cell-float:hover .chip-float-off { opacity: .75; }
+.cell-float:hover .chip-float { filter: brightness(1.35); }

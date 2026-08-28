@@ -239,7 +239,9 @@ const el = {
 /* Transport availability per status. Presentation only — the engine decides
    what each button actually does. hidden/disabled/label, nothing else. */
 const TRANSPORT = {
-  idle:    { start:{show:true,  on:true },  next:{on:false}, back:{on:false}, stop:{on:false}, pause:{on:false, label:'PAUSE',  armed:false} },
+  // BACK stays live in idle: floats get marked during prep, before START, and a
+  // mis-click there must be undoable. With an empty history it is a no-op.
+  idle:    { start:{show:true,  on:true },  next:{on:false}, back:{on:true }, stop:{on:false}, pause:{on:false, label:'PAUSE',  armed:false} },
   running: { start:{show:false, on:false},  next:{on:true },  back:{on:true }, stop:{on:true }, pause:{on:true,  label:'PAUSE',  armed:false} },
   paused:  { start:{show:false, on:false},  next:{on:false}, back:{on:true }, stop:{on:true }, pause:{on:true,  label:'RESUME', armed:true } },
   stopped: { start:{show:true,  on:true },  next:{on:false}, back:{on:true }, stop:{on:false}, pause:{on:false, label:'PAUSE',  armed:false} }
@@ -346,12 +348,16 @@ function buildRow(row) {
   tr.appendChild(cell('cell-backtime mono', row.backtime));
 
   const float = document.createElement('td');
-  if (row.isFloat) {
-    const chip = document.createElement('span');
-    chip.className = 'chip-float';
-    chip.textContent = 'FLOAT';
-    float.appendChild(chip);
-  }
+  float.className = 'cell-float';
+  const chip = document.createElement('span');
+  chip.className = row.isFloat ? 'chip-float' : 'chip-float chip-float-off';
+  chip.textContent = 'FLOAT';
+  chip.title = row.isFloat
+    ? 'Droppable when heavy — click to unmark'
+    : 'Click to mark droppable';
+  // single click toggles (the SLUG cell owns double-click; keep them distinct)
+  float.onclick = () => Backtime.toggleFloat(row.page);
+  float.appendChild(chip);
   tr.appendChild(float);
 
   return tr;

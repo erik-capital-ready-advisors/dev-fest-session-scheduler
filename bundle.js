@@ -457,6 +457,14 @@ const T = {
     }
     save();
   },
+  // Mark/unmark a segment as droppable, live. A producer decides what dies mid-show.
+  toggleFloat(page) {
+    const seg = S.segments.find(s => s.page === page);
+    if (!seg) return;
+    snapshot();                       // BACK undoes a float toggle too
+    seg.is_float = !seg.is_float;
+    save();
+  },
   reset() {
     S = loadState(FIXTURE);
     S.fixture = FIXTURE; S.history = []; S.clockOffsetSec = 0; S.editorPage = null;
@@ -497,9 +505,13 @@ function buildVM() {
   // Float recommendation only when heavy.
   let recommendation = null;
   if (!idle && d.state === 'HEAVY') {
-    const floats = S.segments.filter((s, i) => s.is_float && !s.done && i >= S.currentIndex);
+    // strictly AFTER the current index: you cannot drop the segment that is on air
+    const floats = S.segments.filter((s, i) => s.is_float && !s.done && i > S.currentIndex);
     const r = solveFloats(floats, d.deltaSec);
-    const names = r.cuts.map(c => `"${c.title}"`);
+    // Page code + a short slug: readable across a room, and it is how a control
+    // room actually names a segment ("drop B5") rather than reciting its title.
+    const short = t => (t.length > 30 ? t.slice(0, 29).trimEnd() + '…' : t);
+    const names = r.cuts.map(c => `${c.page} "${short(c.title)}"`);
     const list = names.length > 1
       ? names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1]
       : (names[0] || '');
@@ -566,6 +578,7 @@ window.Backtime = {
   init,
   transport: Object.fromEntries(Object.entries(T).map(([k, f]) => [k, (...a) => { f(...a); paint(); }])),
   openEditor, closeEditor, saveEditor,
+  toggleFloat: page => { T.toggleFloat(page); paint(); },
   state: () => S,
   reset: () => { T.reset(); paint(); },
   setClock: hhmm => { S.clockOffsetSec = parseHHMM(hhmm) - (nowSec() - S.clockOffsetSec); paint(); },
